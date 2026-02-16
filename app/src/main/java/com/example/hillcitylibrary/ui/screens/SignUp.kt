@@ -87,14 +87,16 @@ fun SignUpScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Checkbox State
+        val (termsAccepted, onTermsAcceptedChange) = remember { mutableStateOf(false) }
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            val (checked, onCheckedChange) = remember { mutableStateOf(false) }
             Checkbox(
-                checked = checked,
-                onCheckedChange = onCheckedChange
+                checked = termsAccepted,
+                onCheckedChange = onTermsAcceptedChange
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text("I agree to the Terms and Conditions")
@@ -109,7 +111,8 @@ fun SignUpScreen(
                     popUpTo(Screen.SignUp.route) { inclusive = true }
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = termsAccepted && username.isNotBlank() && email.isNotBlank() && password.length >= 6
         ) {
             Text("Sign Up")
         }

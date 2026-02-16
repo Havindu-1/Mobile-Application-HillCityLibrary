@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -34,6 +35,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +58,7 @@ import com.example.hillcitylibrary.ui.BookViewModel
 import com.example.hillcitylibrary.ui.components.GreetingHeader
 import com.example.hillcitylibrary.ui.theme.GradientEnd
 import com.example.hillcitylibrary.ui.theme.GradientStart
+import com.example.hillcitylibrary.ui.theme.SuccessGreen
 
 @Composable
 fun ProgressScreen(
@@ -70,9 +73,27 @@ fun ProgressScreen(
     var selectedBookId by remember { mutableStateOf<String?>(null) }
     var showCelebration by remember { mutableStateOf(false) }
 
+    // Timer State
+    var isTimerRunning by remember { mutableStateOf(false) }
+    var elapsedTimeSeconds by remember { mutableStateOf(0L) }
+
+    LaunchedEffect(isTimerRunning) {
+        if (isTimerRunning) {
+            val startTime = System.currentTimeMillis() - (elapsedTimeSeconds * 1000)
+            while (true) {
+                val currentTime = System.currentTimeMillis()
+                elapsedTimeSeconds = (currentTime - startTime) / 1000
+                kotlinx.coroutines.delay(1000)
+            }
+        }
+    }
+
     if (showDialog && selectedBookId != null) {
         val selectedBook = books.find { it.id == selectedBookId }
+        val timerMinutes = if (!isTimerRunning && elapsedTimeSeconds > 0) elapsedTimeSeconds / 60 else 0
+        
         LogReadingDialog(
+            initialTimeMinutes = timerMinutes,
             onDismiss = { showDialog = false },
             onConfirm = { pages, time ->
                 if (selectedBook != null) {
@@ -82,6 +103,10 @@ fun ProgressScreen(
                     
                     viewModel.updateProgress(selectedBookId!!, pages, time)
                     showDialog = false
+                    
+                    if (time == timerMinutes && timerMinutes > 0) {
+                        elapsedTimeSeconds = 0 // Reset timer if used
+                    }
                     
                     if (newPages >= totalPages && currentPages < totalPages) {
                         showCelebration = true
@@ -140,6 +165,87 @@ fun ProgressScreen(
             }
             
             Column(modifier = Modifier.padding(20.dp)) {
+                
+                // Active Reading Timer Section
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Current Session",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // Time Display
+                        val hours = elapsedTimeSeconds / 3600
+                        val minutes = (elapsedTimeSeconds % 3600) / 60
+                        val seconds = elapsedTimeSeconds % 60
+                        Text(
+                            text = String.format("%02d:%02d:%02d", hours, minutes, seconds),
+                            fontSize = 40.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Button(
+                                onClick = { isTimerRunning = !isTimerRunning },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isTimerRunning) Color(0xFFEF4444) else SuccessGreen
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    if (isTimerRunning) Icons.Default.Timer else Icons.Default.Timer, // Could swap icon
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(if (isTimerRunning) "Stop" else "Start")
+                            }
+                            
+                            if (!isTimerRunning && elapsedTimeSeconds > 0) {
+                                Button(
+                                    onClick = {
+                                        // Placeholder action
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondary
+                                    ),
+                                    modifier = Modifier.weight(1f),
+                                    enabled = false 
+                                ) {
+                                    Text("Select Book below")
+                                }
+                            }
+                        }
+                        if (!isTimerRunning && elapsedTimeSeconds > 0) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Select a book below to log this time",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
                 // Stats Row with gradient cards
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -185,6 +291,12 @@ fun ProgressScreen(
                             book = book,
                             onLogClick = {
                                 selectedBookId = book.id
+                                // Calculate minutes from timer if available and stopped
+                                if (!isTimerRunning && elapsedTimeSeconds > 0) {
+                                   // Pre-fill dialog or pass directly? 
+                                   // The dialog has its own state. We need to pass initial values.
+                                   // We need to update LogReadingDialog to accept initialTime
+                                }
                                 showDialog = true
                             }
                         )
@@ -377,9 +489,13 @@ fun ProgressBookItem(book: Book, onLogClick: () -> Unit) {
 }
 
 @Composable
-fun LogReadingDialog(onDismiss: () -> Unit, onConfirm: (Int, Long) -> Unit) {
+fun LogReadingDialog(
+    initialTimeMinutes: Long = 0,
+    onDismiss: () -> Unit, 
+    onConfirm: (Int, Long) -> Unit
+) {
     var pages by remember { mutableStateOf("") }
-    var time by remember { mutableStateOf("") }
+    var time by remember { mutableStateOf(if (initialTimeMinutes > 0) initialTimeMinutes.toString() else "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
