@@ -1,9 +1,15 @@
 package com.example.hillcitylibrary.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -43,7 +49,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,6 +95,29 @@ fun HomeScreen(
         books.sortedByDescending { it.rating }.firstOrNull()
     }
 
+    // Animation States
+    var headerVisible by remember { mutableStateOf(false) }
+    var continueReadingVisible by remember { mutableStateOf(false) }
+    var categoriesVisible by remember { mutableStateOf(false) }
+    var featuredVisible by remember { mutableStateOf(false) }
+    var popularVisible by remember { mutableStateOf(false) }
+    var newArrivalsVisible by remember { mutableStateOf(false) }
+
+    // Staggered Effect
+    LaunchedEffect(Unit) {
+        headerVisible = true
+        delay(100)
+        continueReadingVisible = true
+        delay(100)
+        categoriesVisible = true
+        delay(100)
+        featuredVisible = true
+        delay(100)
+        popularVisible = true
+        delay(100)
+        newArrivalsVisible = true
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -93,57 +125,62 @@ fun HomeScreen(
             .verticalScroll(rememberScrollState())
     ) {
         // --- Header Section ---
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(GradientStart, GradientEnd)
-                    )
-                )
+        AnimatedVisibility(
+            visible = headerVisible,
+            enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { -it / 2 }
         ) {
-            Column(
+            Box(
                 modifier = Modifier
-                    .padding(top = 40.dp, bottom = 40.dp, start = 20.dp, end = 20.dp)
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(GradientStart, GradientEnd)
+                        )
+                    )
             ) {
-                GreetingHeader(
-                    modifier = Modifier.padding(bottom = 8.dp),
-                    textColor = Color.White
-                )
-                
-                Text(
-                    text = "What would you like to read today?",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    lineHeight = 32.sp,
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Search Bar
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = viewModel::onSearchQueryChange,
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = Color.Black.copy(alpha = 0.2f))
-                        .background(Color.White, RoundedCornerShape(16.dp)),
-                    placeholder = { 
-                        Text("Search books, authors...", color = Color.Gray) 
-                    },
-                    leadingIcon = { 
-                        Icon(Icons.Default.Search, "Search", tint = Color.Gray) 
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent
-                    ),
-                    singleLine = true
-                )
+                        .padding(top = 40.dp, bottom = 40.dp, start = 20.dp, end = 20.dp)
+                ) {
+                    GreetingHeader(
+                        modifier = Modifier.padding(bottom = 8.dp),
+                        textColor = Color.White
+                    )
+                    
+                    Text(
+                        text = "What would you like to read today?",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        lineHeight = 32.sp,
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Search Bar
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = viewModel::onSearchQueryChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = Color.Black.copy(alpha = 0.2f))
+                            .background(Color.White, RoundedCornerShape(16.dp)),
+                        placeholder = { 
+                            Text("Search books, authors...", color = Color.Gray) 
+                        },
+                        leadingIcon = { 
+                            Icon(Icons.Default.Search, "Search", tint = Color.Gray) 
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent
+                        ),
+                        singleLine = true
+                    )
+                }
             }
         }
 
@@ -157,81 +194,115 @@ fun HomeScreen(
         ) {
             
             // --- Continue Reading Section ---
-            if (currentBook != null) {
-                PaddingSectionHeader("Continue Reading")
-                ContinueReadingCard(
-                    book = currentBook,
-                    onClick = { navController.navigate(Screen.BookDetails.createRoute(currentBook.id)) }
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-
-            // --- Categories ---
-            PaddingSectionHeader("Explore Categories")
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            AnimatedVisibility(
+                visible = continueReadingVisible,
+                enter = fadeIn(tween(500)) + slideInHorizontally(tween(500)) { 100 }
             ) {
-                items(BookGenre.values()) { genre ->
-                    if (genre != BookGenre.ALL) {
-                        CategoryPill(
-                            genre = genre,
-                            onClick = {
-                                viewModel.onGenreSelected(genre)
-                                navController.navigate(Screen.Library.route)
-                            }
+                Column {
+                    if (currentBook != null) {
+                        PaddingSectionHeader("Continue Reading")
+                        ContinueReadingCard(
+                            book = currentBook,
+                            onClick = { navController.navigate(Screen.BookDetails.createRoute(currentBook.id)) }
                         )
+                        Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(32.dp))
+
+            // --- Categories ---
+            AnimatedVisibility(
+                visible = categoriesVisible,
+                enter = fadeIn(tween(500)) + slideInHorizontally(tween(500)) { 100 }
+            ) {
+                Column {
+                    PaddingSectionHeader("Explore Categories")
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(BookGenre.values()) { genre ->
+                            if (genre != BookGenre.ALL) {
+                                CategoryPill(
+                                    genre = genre,
+                                    onClick = {
+                                        viewModel.onGenreSelected(genre)
+                                        navController.navigate(Screen.Library.route)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
+            }
 
             // --- Featured Book ---
-            if (featuredBook != null) {
-                PaddingSectionHeader("Daily Pick")
-                FeaturedBookCard(
-                    book = featuredBook,
-                    onClick = { navController.navigate(Screen.BookDetails.createRoute(featuredBook.id)) }
-                )
-                  Spacer(modifier = Modifier.height(32.dp))
+            AnimatedVisibility(
+                visible = featuredVisible,
+                enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 100 }
+            ) {
+                Column {
+                    if (featuredBook != null) {
+                        PaddingSectionHeader("Daily Pick")
+                        FeaturedBookCard(
+                            book = featuredBook,
+                            onClick = { navController.navigate(Screen.BookDetails.createRoute(featuredBook.id)) }
+                        )
+                          Spacer(modifier = Modifier.height(32.dp))
+                    }
+                }
             }
 
           
             // --- Popular Books ---
-            PaddingSectionHeader("Popular Books", "See All") { 
-                 navController.navigate(Screen.Library.route) 
-            }
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            AnimatedVisibility(
+                visible = popularVisible,
+                enter = fadeIn(tween(500)) + slideInHorizontally(tween(500)) { 100 }
             ) {
-                items(books.sortedByDescending { it.rating }.take(5)) { book ->
-                    BookCard(
-                        book = book,
-                        onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) }
-                    )
+                Column {
+                    PaddingSectionHeader("Popular Books", "See All") { 
+                         navController.navigate(Screen.Library.route) 
+                    }
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(books.sortedByDescending { it.rating }.take(5)) { book ->
+                            BookCard(
+                                book = book,
+                                onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
             
-             Spacer(modifier = Modifier.height(32.dp))
-
             // --- Recently Added ---
-             PaddingSectionHeader("New Arrivals", "See All") { 
-                 navController.navigate(Screen.Library.route) 
-            }
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            AnimatedVisibility(
+                visible = newArrivalsVisible,
+                enter = fadeIn(tween(500)) + slideInHorizontally(tween(500)) { 100 }
             ) {
-                items(books.takeLast(5).reversed()) { book ->
-                    BookCard(
-                        book = book,
-                        onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) }
-                    )
+                Column {
+                     PaddingSectionHeader("New Arrivals", "See All") { 
+                         navController.navigate(Screen.Library.route) 
+                    }
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(books.takeLast(5).reversed()) { book ->
+                            BookCard(
+                                book = book,
+                                onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) }
+                            )
+                        }
+                    }
+        
+                    Spacer(modifier = Modifier.height(100.dp)) // Bottom padding
                 }
             }
-
-            Spacer(modifier = Modifier.height(100.dp)) // Bottom padding
         }
     }
 }

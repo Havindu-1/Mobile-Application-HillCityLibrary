@@ -1,9 +1,14 @@
 package com.example.hillcitylibrary.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,8 +48,12 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -89,6 +98,22 @@ fun ProfileScreen(
         label = "progress"
     )
 
+    // Animation States
+    var headerVisible by remember { mutableStateOf(false) }
+    var statsVisible by remember { mutableStateOf(false) }
+    var achievementsVisible by remember { mutableStateOf(false) }
+    var settingsVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        headerVisible = true
+        delay(300)
+        statsVisible = true
+        delay(200)
+        achievementsVisible = true
+        delay(200)
+        settingsVisible = true
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -96,212 +121,219 @@ fun ProfileScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         // Gradient Header with Profile
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            GradientStart,
-                            GradientEnd
+        AnimatedVisibility(
+            visible = headerVisible,
+            enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { -it / 2 }
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                GradientStart,
+                                GradientEnd
+                            )
                         )
                     )
-                )
-                .padding(top = 48.dp, bottom = 32.dp, start = 20.dp, end = 20.dp)
-        ) {
-
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
+                    .padding(top = 48.dp, bottom = 32.dp, start = 20.dp, end = 20.dp)
             ) {
-                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    IconButton(
-                        onClick = { navController.popBackStack() },
-                        modifier = Modifier.padding(end = 8.dp)
+                     Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
+                        IconButton(
+                            onClick = { navController.popBackStack() },
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                        GreetingHeader(
+                            modifier = Modifier.weight(1f),
+                            textColor = Color.White
                         )
                     }
-                    GreetingHeader(
-                        modifier = Modifier.weight(1f),
-                        textColor = Color.White
-                    )
-                }
 
-                // Profile Picture with progress ring
-                Box(
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        progress = { animatedProgress },
-                        modifier = Modifier.size(140.dp),
-                        strokeWidth = 6.dp,
-                        color = AccentGold,
-                        trackColor = Color.White.copy(alpha = 0.3f),
-                        strokeCap = StrokeCap.Round
-                    )
-                    
+                    // Profile Picture with progress ring
                     Box(
-                        modifier = Modifier
-                            .size(120.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(60.dp),
-                            tint = Color.White
+                        CircularProgressIndicator(
+                            progress = { animatedProgress },
+                            modifier = Modifier.size(140.dp),
+                            strokeWidth = 6.dp,
+                            color = AccentGold,
+                            trackColor = Color.White.copy(alpha = 0.3f),
+                            strokeCap = StrokeCap.Round
+                        )
+                        
+                        Box(
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(60.dp),
+                                tint = Color.White
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "John Doe",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Bookworm • Reader",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Progress percentage
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = AccentGold.copy(alpha = 0.3f)
+                        ),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text(
+                            text = "${completionPercentage.toInt()}% Collection Complete",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
                         )
                     }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = "John Doe",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Text(
-                    text = "Bookworm • Reader",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.9f)
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Progress percentage
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = AccentGold.copy(alpha = 0.3f)
-                    ),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Text(
-                        text = "${completionPercentage.toInt()}% Collection Complete",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
                 }
             }
         }
 
         // Stats Grid
-        Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        AnimatedVisibility(
+            visible = statsVisible,
+            enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 50 }
         ) {
-            Text(
-                "Reading Statistics",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            
-            // Row 1: Books & Pages
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                StatCard(
-                    icon = Icons.Default.Book,
-                    label = "Books Read",
-                    value = booksCompleted.toString(),
-                    color = GradientStart,
-                    modifier = Modifier.weight(1f)
+                Text(
+                    "Reading Statistics",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                StatCard(
-                    icon = Icons.Default.MenuBook,
-                    label = "Total Pages",
-                    value = totalPagesRead.toString(),
-                    color = SuccessGreen,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            
-            // Row 2: Time & Favorites
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                StatCard(
-                    icon = Icons.Default.Timer,
-                    label = "Reading Time",
-                    value = "${totalTimeMinutes}m",
-                    color = AccentGold,
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    icon = Icons.Default.Favorite,
-                    label = "Favorites",
-                    value = favoriteBooks.size.toString(),
-                    color = Color(0xFFEF4444),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Achievements Section
-            Text(
-                "Achievements",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(vertical = 8.dp)
-            ) {
-                item {
-                    AchievementBadge(
-                        icon = Icons.Default.AutoStories,
-                        title = "Bookworm",
-                        description = "Read ${booksCompleted} books",
-                        isUnlocked = booksCompleted >= 5
+                
+                // Row 1: Books & Pages
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    StatCard(
+                        icon = Icons.Default.Book,
+                        label = "Books Read",
+                        value = booksCompleted.toString(),
+                        color = GradientStart,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        icon = Icons.Default.MenuBook,
+                        label = "Total Pages",
+                        value = totalPagesRead.toString(),
+                        color = SuccessGreen,
+                        modifier = Modifier.weight(1f)
                     )
                 }
-                item {
-                    AchievementBadge(
-                        icon = Icons.Default.LocalFireDepartment,
-                        title = "On Fire",
-                        description = "5 day streak",
-                        isUnlocked = totalTimeMinutes > 300
+                
+                // Row 2: Time & Favorites
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    StatCard(
+                        icon = Icons.Default.Timer,
+                        label = "Reading Time",
+                        value = "${totalTimeMinutes}m",
+                        color = AccentGold,
+                        modifier = Modifier.weight(1f)
                     )
-                }
-                item {
-                    AchievementBadge(
-                        icon = Icons.Default.EmojiEvents,
-                        title = "Champion",
-                        description = "100+ pages",
-                        isUnlocked = totalPagesRead >= 100
+                    StatCard(
+                        icon = Icons.Default.Favorite,
+                        label = "Favorites",
+                        value = favoriteBooks.size.toString(),
+                        color = Color(0xFFEF4444),
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Settings Section
-            Text(
-                "Settings",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Achievements Section
+        AnimatedVisibility(
+            visible = achievementsVisible,
+            enter = fadeIn(tween(500)) + slideInHorizontally(tween(500)) { 50 }
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                Text(
+                    "Achievements",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    item {
+                        AchievementBadge(
+                            icon = Icons.Default.AutoStories,
+                            title = "Bookworm",
+                            description = "Read ${booksCompleted} books",
+                            isUnlocked = booksCompleted >= 5
+                        )
+                    }
+                    item {
+                        AchievementBadge(
+                            icon = Icons.Default.LocalFireDepartment,
+                            title = "On Fire",
+                            description = "5 day streak",
+                            isUnlocked = totalTimeMinutes > 300
+                        )
+                    }
+                    item {
+                        AchievementBadge(
+                            icon = Icons.Default.EmojiEvents,
+                            title = "Champion",
+                            description = "100+ pages",
+                            isUnlocked = totalPagesRead >= 100
+                        )
+                    }
+                }
+            }
+        }
             
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -332,7 +364,6 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(120.dp))
         }
     }
-}
 
 @Composable
 fun StatCard(

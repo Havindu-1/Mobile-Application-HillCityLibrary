@@ -1,6 +1,12 @@
 package com.example.hillcitylibrary.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -92,78 +98,93 @@ fun FavoritesScreen(
         selectedCollection = null
     }
 
+    // Animation States
+    var headerVisible by remember { mutableStateOf(false) }
+    var contentVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        headerVisible = true
+        delay(100)
+        contentVisible = true
+    }
+
     Scaffold(
         topBar = {
-            Box(
-                modifier = Modifier.background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            GradientStart,
-                            GradientEnd
+            AnimatedVisibility(
+                visible = headerVisible,
+                enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { -50 }
+            ) {
+                Box(
+                    modifier = Modifier.background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                GradientStart,
+                                GradientEnd
+                            )
                         )
                     )
-                )
-            ) {
-                Column {
-                    GreetingHeader(
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        textColor = Color.White
-                    )
-                    TopAppBar(
-                        title = { 
-                            Text(
-                                text = if (selectedCollection != null) selectedCollection!!.name else "Favorites",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Transparent,
-                            titleContentColor = Color.White
-                        ),
-                        navigationIcon = {
-                            IconButton(
-                                onClick = {
-                                    if (selectedCollection != null) {
-                                        selectedCollection = null
-                                    } else {
-                                        navController.popBackStack()
+                ) {
+                    Column {
+                        GreetingHeader(
+                            modifier = Modifier.padding(start = 8.dp, end = 8.dp),
+                            textColor = Color.White
+                        )
+                        TopAppBar(
+                            title = { 
+                                Text(
+                                    text = if (selectedCollection != null) selectedCollection!!.name else "Favorites",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color.Transparent,
+                                titleContentColor = Color.White
+                            ),
+                            navigationIcon = {
+                                IconButton(
+                                    onClick = {
+                                        if (selectedCollection != null) {
+                                            selectedCollection = null
+                                        } else {
+                                            navController.popBackStack()
+                                        }
                                     }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowBack,
+                                        contentDescription = "Back",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                        )
+                        
+                        if (selectedCollection == null) {
+                            TabRow(
+                                selectedTabIndex = selectedTab,
+                                containerColor = Color.Transparent,
+                                contentColor = Color.White,
+                                indicator = { tabPositions ->
+                                    TabRowDefaults.SecondaryIndicator(
+                                        Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                                        color = AccentGold
+                                    )
                                 }
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = Color.White
-                                )
-                            }
-                        }
-                    )
-                    
-                    if (selectedCollection == null) {
-                        TabRow(
-                            selectedTabIndex = selectedTab,
-                            containerColor = Color.Transparent,
-                            contentColor = Color.White,
-                            indicator = { tabPositions ->
-                                TabRowDefaults.SecondaryIndicator(
-                                    Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                                    color = AccentGold
-                                )
-                            }
-                        ) {
-                            tabs.forEachIndexed { index, title ->
-                                Tab(
-                                    selected = selectedTab == index,
-                                    onClick = { selectedTab = index },
-                                    text = { 
-                                        Text(
-                                            title, 
-                                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (selectedTab == index) Color.White else Color.White.copy(alpha = 0.7f)
-                                        ) 
-                                    }
-                                )
+                                tabs.forEachIndexed { index, title ->
+                                    Tab(
+                                        selected = selectedTab == index,
+                                        onClick = { selectedTab = index },
+                                        text = { 
+                                            Text(
+                                                title, 
+                                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (selectedTab == index) Color.White else Color.White.copy(alpha = 0.7f)
+                                            ) 
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -182,112 +203,117 @@ fun FavoritesScreen(
             }
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+        AnimatedVisibility(
+            visible = contentVisible,
+            enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 50 }
         ) {
-            if (selectedCollection != null) {
-                // Shelf Details View
-                val collectionBooks = viewModel.books.collectAsState().value.filter { selectedCollection!!.bookIds.contains(it.id) }
-                
-                if (collectionBooks.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("This shelf is empty.", style = MaterialTheme.typography.bodyLarge)
-                    }
-                } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(collectionBooks) { book ->
-                            LibraryBookItem(
-                                book = book,
-                                onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) },
-                                onReserveClick = viewModel::reserveBook,
-                                onFavoriteClick = viewModel::toggleFavorite,
-                                onAddToCollectionClick = { /* Already in collection, maybe remove? */ }
-                            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                if (selectedCollection != null) {
+                    // Shelf Details View
+                    val collectionBooks = viewModel.books.collectAsState().value.filter { selectedCollection!!.bookIds.contains(it.id) }
+                    
+                    if (collectionBooks.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("This shelf is empty.", style = MaterialTheme.typography.bodyLarge)
                         }
-                    }
-                }
-            } else {
-                when (selectedTab) {
-                    0 -> { // Favorites Tab
-                        if (favoriteBooks.isEmpty()) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = "No favorites yet.\nGo to the library to add some!",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(collectionBooks) { book ->
+                                LibraryBookItem(
+                                    book = book,
+                                    onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) },
+                                    onReserveClick = viewModel::reserveBook,
+                                    onFavoriteClick = viewModel::toggleFavorite,
+                                    onAddToCollectionClick = { /* Already in collection, maybe remove? */ }
                                 )
                             }
-                        } else {
-                            LazyColumn(
-                                contentPadding = PaddingValues(bottom = 80.dp, top = 16.dp, start = 16.dp, end = 16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(favoriteBooks) { book ->
-                                    LibraryBookItem(
-                                        book = book,
-                                        onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) },
-                                        onReserveClick = viewModel::reserveBook,
-                                        onFavoriteClick = viewModel::toggleFavorite,
-                                        onAddToCollectionClick = { bookId -> bookIdAddToCollection = bookId }
+                        }
+                    }
+                } else {
+                    when (selectedTab) {
+                        0 -> { // Favorites Tab
+                            if (favoriteBooks.isEmpty()) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = "No favorites yet.\nGo to the library to add some!",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                }
+                            } else {
+                                LazyColumn(
+                                    contentPadding = PaddingValues(bottom = 80.dp, top = 16.dp, start = 16.dp, end = 16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(favoriteBooks) { book ->
+                                        LibraryBookItem(
+                                            book = book,
+                                            onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) },
+                                            onReserveClick = viewModel::reserveBook,
+                                            onFavoriteClick = viewModel::toggleFavorite,
+                                            onAddToCollectionClick = { bookId -> bookIdAddToCollection = bookId }
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
-                    1 -> { // Shelves Tab
-                        if (collections.isEmpty()) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = "No shelves yet.\nCreate one to organize your books!",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        } else {
-                            androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                                columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(150.dp),
-                                contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                items(collections.size) { index ->
-                                    val collection = collections[index]
-                                    Card(
-                                        modifier = Modifier
-                                            .height(180.dp)
-                                            .clickable { selectedCollection = collection },
-                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                                    ) {
-                                        Column(
+                        1 -> { // Shelves Tab
+                            if (collections.isEmpty()) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = "No shelves yet.\nCreate one to organize your books!",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            } else {
+                                LazyVerticalGrid(
+                                    columns = GridCells.Adaptive(150.dp),
+                                    contentPadding = PaddingValues(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    items(collections.size) { index ->
+                                        val collection = collections[index]
+                                        Card(
                                             modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(16.dp),
-                                            verticalArrangement = Arrangement.SpaceBetween
+                                                .height(180.dp)
+                                                .clickable { selectedCollection = collection },
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Menu, // Use a generic icon or custom
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(40.dp)
-                                            )
-                                            Column {
-                                                Text(
-                                                    text = collection.name,
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    fontWeight = FontWeight.Bold
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .padding(16.dp),
+                                                verticalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Menu, // Use a generic icon or custom
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(40.dp)
                                                 )
-                                                Text(
-                                                    text = "${collection.bookIds.size} books",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
+                                                Column {
+                                                    Text(
+                                                        text = collection.name,
+                                                        style = MaterialTheme.typography.titleMedium,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                    Text(
+                                                        text = "${collection.bookIds.size} books",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
                                             }
                                         }
                                     }

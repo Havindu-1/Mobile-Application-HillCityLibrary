@@ -1,8 +1,18 @@
 package com.example.hillcitylibrary.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -80,191 +90,219 @@ fun ShopScreen(
     val selectedCategory by viewModel.selectedCategory.collectAsState(initial = null)
     val searchQuery by viewModel.searchQuery.collectAsState(initial = "")
 
+    // Animation States
+    var headerVisible by remember { mutableStateOf(false) }
+    var categoriesVisible by remember { mutableStateOf(false) }
+    var contentVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        headerVisible = true
+        delay(200)
+        categoriesVisible = true
+        delay(200)
+        contentVisible = true
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
         // Header with gradient
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            GradientStart,
-                            GradientEnd
+        AnimatedVisibility(
+            visible = headerVisible,
+            enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { -50 }
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                GradientStart,
+                                GradientEnd
+                            )
                         )
                     )
-                )
-                .padding(top = 40.dp, bottom = 16.dp, start = 20.dp, end = 20.dp)
-        ) {
-            Column {
-                GreetingHeader(
-                    modifier = Modifier.padding(bottom = 8.dp),
-                    textColor = Color.White
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                         IconButton(
-                            onClick = { navController.popBackStack() },
-                            modifier = Modifier
-                                .size(36.dp)
-                                .padding(end = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Color.White
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "Book Store",
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "Find your next favorite book",
-                            fontSize = 14.sp,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
-                    }
-                }
-
-                    // Cart Button with Badge
-                    BadgedBox(
-                        badge = {
-                            if (cartItemCount > 0) {
-                                Badge(
-                                    containerColor = AccentGold,
-                                    contentColor = Color.White
-                                ) {
-                                    Text("$cartItemCount")
-                                }
+                    .padding(top = 40.dp, bottom = 16.dp, start = 20.dp, end = 20.dp)
+            ) {
+                Column {
+                    GreetingHeader(
+                        modifier = Modifier.padding(bottom = 8.dp),
+                        textColor = Color.White
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                             IconButton(
+                                onClick = { navController.popBackStack() },
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .padding(end = 8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = Color.White
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Book Store",
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Find your next favorite book",
+                                    fontSize = 14.sp,
+                                    color = Color.White.copy(alpha = 0.9f)
+                                )
                             }
                         }
-                    ) {
-                        IconButton(
-                            onClick = { navController.navigate(Screen.Cart.route) },
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.2f))
+
+                        // Cart Button with Badge
+                        BadgedBox(
+                            badge = {
+                                if (cartItemCount > 0) {
+                                    Badge(
+                                        containerColor = AccentGold,
+                                        contentColor = Color.White
+                                    ) {
+                                        Text("$cartItemCount")
+                                    }
+                                }
+                            }
                         ) {
-                            Icon(
-                                Icons.Default.ShoppingCart,
-                                contentDescription = "Cart",
-                                tint = Color.White
-                            )
+                            IconButton(
+                                onClick = { navController.navigate(Screen.Cart.route) },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.2f))
+                            ) {
+                                Icon(
+                                    Icons.Default.ShoppingCart,
+                                    contentDescription = "Cart",
+                                    tint = Color.White
+                                )
+                            }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Search Bar
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { viewModel.setSearchQuery(it) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.White),
+                        placeholder = {
+                            Text(
+                                "Search books...",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent
+                        ),
+                        singleLine = true
+                    )
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Search Bar
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.setSearchQuery(it) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.White),
-                    placeholder = {
-                        Text(
-                            "Search books...",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent
-                    ),
-                    singleLine = true
-                )
             }
         }
 
         // Category Chips - Horizontally scrollable
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        AnimatedVisibility(
+            visible = categoriesVisible,
+            enter = fadeIn(tween(500)) + slideInHorizontally(tween(500)) { 50 }
         ) {
-            CategoryChip(
-                label = "All",
-                selected = selectedCategory == null,
-                onClick = { viewModel.setCategory(null) }
-            )
-            BookGenre.values().filter { it != BookGenre.ALL }.forEach { genre ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 CategoryChip(
-                    label = genre.displayName,
-                    selected = selectedCategory == genre,
-                    onClick = { viewModel.setCategory(genre) }
+                    label = "All",
+                    selected = selectedCategory == null,
+                    onClick = { viewModel.setCategory(null) }
                 )
+                BookGenre.values().filter { it != BookGenre.ALL }.forEach { genre ->
+                    CategoryChip(
+                        label = genre.displayName,
+                        selected = selectedCategory == genre,
+                        onClick = { viewModel.setCategory(genre) }
+                    )
+                }
             }
         }
 
         // Books Grid - Single scrollable list
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize()
+        AnimatedVisibility(
+            visible = contentVisible,
+            enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 100 }
         ) {
-            // Show message if no books found
-            if (shopBooks.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Show message if no books found
+                if (shopBooks.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                Icons.Default.Search,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                "No books found",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    "No books found",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
-                }
-            } else {
-                items(shopBooks) { book ->
-                    ShopBookCard(
-                        book = book,
-                        onAddToCart = { viewModel.addToCart(book) }
-                    )
+                } else {
+                    items(shopBooks) { book ->
+                        ShopBookCard(
+                            book = book,
+                            onAddToCart = { viewModel.addToCart(book) }
+                        )
+                    }
                 }
             }
         }
