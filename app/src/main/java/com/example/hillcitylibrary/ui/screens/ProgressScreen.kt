@@ -121,186 +121,186 @@ fun ProgressScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
         ) {
-            // Header with gradient
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                GradientStart,
-                                GradientEnd
+            // Item 1: Header
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    GradientStart,
+                                    GradientEnd
+                                )
                             )
                         )
-                    )
-                    .padding(top = 48.dp, bottom = 24.dp, start = 20.dp, end = 20.dp)
-            ) {
-                Column {
-                    GreetingHeader(
-                        modifier = Modifier.padding(bottom = 8.dp),
-                        textColor = Color.White
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = { navController.popBackStack() },
-                            modifier = Modifier.padding(end = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Color.White
+                        .padding(top = 48.dp, bottom = 24.dp, start = 20.dp, end = 20.dp)
+                ) {
+                    Column {
+                        GreetingHeader(
+                            modifier = Modifier.padding(bottom = 8.dp),
+                            textColor = Color.White
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = { navController.popBackStack() },
+                                modifier = Modifier.padding(end = 8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = Color.White
+                                )
+                            }
+                            Text(
+                                text = "Your Reading Progress",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
                             )
                         }
-                        Text(
-                            text = "Your Reading Progress",
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
                     }
                 }
             }
-            
-            Column(modifier = Modifier.padding(20.dp)) {
-                
-                // Active Reading Timer Section
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 24.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Current Session",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        // Time Display
-                        val hours = elapsedTimeSeconds / 3600
-                        val minutes = (elapsedTimeSeconds % 3600) / 60
-                        val seconds = elapsedTimeSeconds % 60
-                        Text(
-                            text = String.format("%02d:%02d:%02d", hours, minutes, seconds),
-                            fontSize = 40.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Button(
-                                onClick = { isTimerRunning = !isTimerRunning },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isTimerRunning) Color(0xFFEF4444) else SuccessGreen
-                                ),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    if (isTimerRunning) Icons.Default.Timer else Icons.Default.Timer, // Could swap icon
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(if (isTimerRunning) "Stop" else "Start")
-                            }
-                            
-                            if (!isTimerRunning && elapsedTimeSeconds > 0) {
-                                Button(
-                                    onClick = {
-                                        // Placeholder action
-                                    },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondary
-                                    ),
-                                    modifier = Modifier.weight(1f),
-                                    enabled = false 
-                                ) {
-                                    Text("Select Book below")
-                                }
-                            }
-                        }
-                        if (!isTimerRunning && elapsedTimeSeconds > 0) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "Select a book below to log this time",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
 
-                // Stats Row with gradient cards
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    ProgressStatCard(
-                        icon = Icons.Default.Book,
-                        label = "Books",
-                        value = stats.first.toString(),
-                        modifier = Modifier.weight(1f),
-                        gradientColors = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
-                    )
-                    ProgressStatCard(
-                        icon = Icons.Default.Book,
-                        label = "Pages",
-                        value = stats.second.toString(),
-                        modifier = Modifier.weight(1f),
-                        gradientColors = listOf(Color(0xFF06B6D4), Color(0xFF0891B2))
-                    )
-                    val hours = stats.third / 60
-                    val minutes = stats.third % 60
-                    ProgressStatCard(
-                        icon = Icons.Default.Timer,
-                        label = "Time",
-                        value = "${hours}h ${minutes}m",
-                        modifier = Modifier.weight(1f),
-                        gradientColors = listOf(Color(0xFFEC4899), Color(0xFFDB2777))
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(32.dp))
-                Text(
-                    text = "Currently Reading",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(inProgressBooks) { book ->
-                        ProgressBookItem(
-                            book = book,
-                            onLogClick = {
-                                selectedBookId = book.id
-                                // Calculate minutes from timer if available and stopped
-                                if (!isTimerRunning && elapsedTimeSeconds > 0) {
-                                   // Pre-fill dialog or pass directly? 
-                                   // The dialog has its own state. We need to pass initial values.
-                                   // We need to update LogReadingDialog to accept initialTime
+            // Item 2: Timer and Stats Container
+            item {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    // Active Reading Timer Section
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 24.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Current Session",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            // Time Display
+                            val hours = elapsedTimeSeconds / 3600
+                            val minutes = (elapsedTimeSeconds % 3600) / 60
+                            val seconds = elapsedTimeSeconds % 60
+                            Text(
+                                text = String.format("%02d:%02d:%02d", hours, minutes, seconds),
+                                fontSize = 40.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Button(
+                                    onClick = { isTimerRunning = !isTimerRunning },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (isTimerRunning) Color(0xFFEF4444) else SuccessGreen
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        if (isTimerRunning) Icons.Default.Timer else Icons.Default.Timer, // Could swap icon
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(if (isTimerRunning) "Stop" else "Start")
                                 }
-                                showDialog = true
+                                
+                                if (!isTimerRunning && elapsedTimeSeconds > 0) {
+                                    Button(
+                                        onClick = {
+                                            // Placeholder action
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.secondary
+                                        ),
+                                        modifier = Modifier.weight(1f),
+                                        enabled = false 
+                                    ) {
+                                        Text("Select Book below")
+                                    }
+                                }
                             }
+                            if (!isTimerRunning && elapsedTimeSeconds > 0) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Select a book below to log this time",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    // Stats Row with gradient cards
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ProgressStatCard(
+                            icon = Icons.Default.Book,
+                            label = "Books",
+                            value = stats.first.toString(),
+                            modifier = Modifier.weight(1f),
+                            gradientColors = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
+                        )
+                        ProgressStatCard(
+                            icon = Icons.Default.Book,
+                            label = "Pages",
+                            value = stats.second.toString(),
+                            modifier = Modifier.weight(1f),
+                            gradientColors = listOf(Color(0xFF06B6D4), Color(0xFF0891B2))
+                        )
+                        val h = stats.third / 60
+                        val m = stats.third % 60
+                        ProgressStatCard(
+                            icon = Icons.Default.Timer,
+                            label = "Time",
+                            value = "${h}h ${m}m",
+                            modifier = Modifier.weight(1f),
+                            gradientColors = listOf(Color(0xFFEC4899), Color(0xFFDB2777))
                         )
                     }
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Text(
+                        text = "Currently Reading",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+
+            // Item 3: Book List
+            items(inProgressBooks) { book ->
+                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
+                    ProgressBookItem(
+                        book = book,
+                        onLogClick = {
+                            selectedBookId = book.id
+                            showDialog = true
+                        }
+                    )
                 }
             }
         }
