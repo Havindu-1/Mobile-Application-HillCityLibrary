@@ -77,9 +77,19 @@ fun LibraryScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         },
+                        navigationIcon = {
+                            IconButton(onClick = { navController.popBackStack() }) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = Color.White
+                                )
+                            }
+                        },
                         colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = Color.Transparent,
-                            titleContentColor = Color.White
+                            titleContentColor = Color.White,
+                            navigationIconContentColor = Color.White
                         )
                     )
                 }

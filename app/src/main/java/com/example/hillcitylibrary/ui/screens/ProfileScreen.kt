@@ -110,17 +110,31 @@ fun ProfileScreen(
                 )
                 .padding(top = 48.dp, bottom = 32.dp, start = 20.dp, end = 20.dp)
         ) {
-            // Back Button
-            // Back Button removed as this is a main tab destination
+
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                GreetingHeader(
-                    modifier = Modifier.padding(bottom = 16.dp),
-                    textColor = Color.White
-                )
+                 Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                    GreetingHeader(
+                        modifier = Modifier.weight(1f),
+                        textColor = Color.White
+                    )
+                }
 
                 // Profile Picture with progress ring
                 Box(

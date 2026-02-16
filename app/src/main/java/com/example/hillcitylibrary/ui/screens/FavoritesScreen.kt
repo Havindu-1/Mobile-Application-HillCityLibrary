@@ -122,14 +122,20 @@ fun FavoritesScreen(
                             titleContentColor = Color.White
                         ),
                         navigationIcon = {
-                            if (selectedCollection != null) {
-                                IconButton(onClick = { selectedCollection = null }) {
-                                    Icon(
-                                        imageVector = Icons.Filled.ArrowBack,
-                                        contentDescription = "Back",
-                                        tint = Color.White
-                                    )
+                            IconButton(
+                                onClick = {
+                                    if (selectedCollection != null) {
+                                        selectedCollection = null
+                                    } else {
+                                        navController.popBackStack()
+                                    }
                                 }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = Color.White
+                                )
                             }
                         }
                     )
