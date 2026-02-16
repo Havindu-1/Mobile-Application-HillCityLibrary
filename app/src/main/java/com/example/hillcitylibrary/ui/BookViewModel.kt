@@ -25,17 +25,44 @@ class BookViewModel : ViewModel() {
 
     val books: StateFlow<List<Book>> = repository.books
 
+    // Sorting
+    enum class SortOption {
+        TITLE, AUTHOR, RATING
+    }
+
+    private val _sortOption = MutableStateFlow(SortOption.TITLE)
+    val sortOption: StateFlow<SortOption> = _sortOption.asStateFlow()
+
+    fun onSortOptionSelected(option: SortOption) {
+        _sortOption.value = option
+    }
+
+    // View Mode
+    private val _isGridView = MutableStateFlow(false)
+    val isGridView: StateFlow<Boolean> = _isGridView.asStateFlow()
+
+    fun toggleViewMode() {
+        _isGridView.value = !_isGridView.value
+    }
+
     // Derived state for filtered books
     val filteredBooks: StateFlow<List<Book>> = combine(
         books,
         _searchQuery,
-        _selectedGenre
-    ) { currentBooks, query, genre ->
-        currentBooks.filter { book ->
+        _selectedGenre,
+        _sortOption
+    ) { currentBooks, query, genre, sort ->
+        val filtered = currentBooks.filter { book ->
             val matchesQuery = book.title.contains(query, ignoreCase = true) ||
                     book.author.contains(query, ignoreCase = true)
             val matchesGenre = genre == null || genre == BookGenre.ALL || book.genre == genre
             matchesQuery && matchesGenre
+        }
+        
+        when (sort) {
+            SortOption.TITLE -> filtered.sortedBy { it.title }
+            SortOption.AUTHOR -> filtered.sortedBy { it.author }
+            SortOption.RATING -> filtered.sortedByDescending { it.rating }
         }
     }.stateIn(
         scope = viewModelScope,

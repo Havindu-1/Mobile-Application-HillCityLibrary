@@ -1,7 +1,16 @@
 package com.example.hillcitylibrary.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -122,173 +131,221 @@ fun BookDetailsScreen(
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                // Animation States
+                var coverVisible by remember { mutableStateOf(false) }
+                var infoVisible by remember { mutableStateOf(false) }
+                var detailsVisible by remember { mutableStateOf(false) }
+                var descriptionVisible by remember { mutableStateOf(false) }
+                var actionsVisible by remember { mutableStateOf(false) }
+
+                LaunchedEffect(Unit) {
+                    coverVisible = true
+                    delay(100)
+                    infoVisible = true
+                    delay(100)
+                    detailsVisible = true
+                    delay(100)
+                    descriptionVisible = true
+                    delay(100)
+                    actionsVisible = true
+                }
+
                 // Cover Image with Shadow
-                Box(
-                    modifier = Modifier
-                        .height(300.dp)
-                        .width(200.dp)
-                        .shadow(
-                            elevation = 16.dp,
-                            shape = RoundedCornerShape(16.dp),
-                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                        )
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color.Gray)
+                AnimatedVisibility(
+                    visible = coverVisible,
+                    enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { -50 }
                 ) {
-                    Image(
-                        painter = painterResource(id = currentBook.coverImg),
-                        contentDescription = currentBook.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    Box(
+                        modifier = Modifier
+                            .height(300.dp)
+                            .width(200.dp)
+                            .shadow(
+                                elevation = 16.dp,
+                                shape = RoundedCornerShape(16.dp),
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                            )
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.Gray)
+                    ) {
+                        Image(
+                            painter = painterResource(id = currentBook.coverImg),
+                            contentDescription = currentBook.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // Title and Author
-                Text(
-                    text = currentBook.title,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "by ${currentBook.author}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Metadata Row (Rating, Pages, Genre)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                AnimatedVisibility(
+                    visible = infoVisible,
+                    enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 50 }
                 ) {
-                    // Rating
-                    MetadataItem(
-                        icon = Icons.Default.Star,
-                        text = String.format("%.1f", currentBook.rating),
-                        iconTint = AccentGold
-                    )
-
-                    Spacer(modifier = Modifier.width(24.dp))
-                    
-                    // Divider
-                    Box(
-                        modifier = Modifier
-                            .height(24.dp)
-                            .width(1.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant)
-                    )
-                    
-                    Spacer(modifier = Modifier.width(24.dp))
-
-                    // Page Count
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "${currentBook.pageCount}",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            text = currentBook.title,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.fillMaxWidth()
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Pages",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(24.dp))
-                    
-                    // Divider
-                    Box(
-                        modifier = Modifier
-                            .height(24.dp)
-                            .width(1.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant)
-                    )
-
-                    Spacer(modifier = Modifier.width(24.dp))
-
-                    // Language / Genre
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "Eng",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Lang",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "by ${currentBook.author}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
-
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Genre Pill
-                Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = CircleShape,
+                // Metadata Row (Rating, Pages, Genre)
+                AnimatedVisibility(
+                    visible = detailsVisible,
+                    enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 50 }
                 ) {
-                    Text(
-                        text = currentBook.genre.displayName,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Rating
+                            MetadataItem(
+                                icon = Icons.Default.Star,
+                                text = String.format("%.1f", currentBook.rating),
+                                iconTint = AccentGold
+                            )
+
+                            Spacer(modifier = Modifier.width(24.dp))
+                            
+                            // Divider
+                            Box(
+                                modifier = Modifier
+                                    .height(24.dp)
+                                    .width(1.dp)
+                                    .background(MaterialTheme.colorScheme.outlineVariant)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(24.dp))
+
+                            // Page Count
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "${currentBook.pageCount}",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Pages",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(24.dp))
+                            
+                            // Divider
+                            Box(
+                                modifier = Modifier
+                                    .height(24.dp)
+                                    .width(1.dp)
+                                    .background(MaterialTheme.colorScheme.outlineVariant)
+                            )
+
+                            Spacer(modifier = Modifier.width(24.dp))
+
+                            // Language / Genre
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Eng",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Lang",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Genre Pill
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = CircleShape,
+                        ) {
+                            Text(
+                                text = currentBook.genre.displayName,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // Description
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Description",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = currentBook.description,
-                        style = MaterialTheme.typography.bodyLarge,
-                        lineHeight = 26.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f),
-                        textAlign = TextAlign.Start
-                    )
+                AnimatedVisibility(
+                    visible = descriptionVisible,
+                    enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 50 }
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Description",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = currentBook.description,
+                            style = MaterialTheme.typography.bodyLarge,
+                            lineHeight = 26.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f),
+                            textAlign = TextAlign.Start
+                        )
+                    }
                 }
                 
                 Spacer(modifier = Modifier.height(48.dp))
 
                 // CTA Button
-                Button(
-                    onClick = { viewModel.reserveBook(currentBook.id) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(16.dp),
-                            spotColor = GradientStart.copy(alpha = 0.5f)
-                        ),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (currentBook.isReserved) MaterialTheme.colorScheme.secondary else GradientStart
-                    ),
-                    shape = RoundedCornerShape(16.dp)
+                AnimatedVisibility(
+                    visible = actionsVisible,
+                    enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 50 }
                 ) {
-                    Text(
-                        text = if (currentBook.isReserved) "Booked / In Progress" else "Book / Reserve",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Button(
+                        onClick = { viewModel.reserveBook(currentBook.id) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .shadow(
+                                elevation = 8.dp,
+                                shape = RoundedCornerShape(16.dp),
+                                spotColor = GradientStart.copy(alpha = 0.5f)
+                            ),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (currentBook.isReserved) MaterialTheme.colorScheme.secondary else GradientStart
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(
+                            text = if (currentBook.isReserved) "Booked / In Progress" else "Book / Reserve",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }
