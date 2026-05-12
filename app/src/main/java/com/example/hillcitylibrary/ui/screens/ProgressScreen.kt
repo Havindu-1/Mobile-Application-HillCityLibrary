@@ -59,6 +59,8 @@ import com.example.hillcitylibrary.ui.components.GreetingHeader
 import com.example.hillcitylibrary.ui.theme.GradientEnd
 import com.example.hillcitylibrary.ui.theme.GradientStart
 import com.example.hillcitylibrary.ui.theme.SuccessGreen
+import com.example.hillcitylibrary.util.GamificationManager
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun ProgressScreen(
@@ -68,6 +70,10 @@ fun ProgressScreen(
     val books by viewModel.books.collectAsState()
     val stats by viewModel.readingStats.collectAsState() // Triple(completed, totalPages, totalTime)
     val inProgressBooks = books.filter { it.isReserved }
+
+    val context = LocalContext.current
+    val gamificationManager = remember { GamificationManager(context) }
+    val userProfile by gamificationManager.userProfile.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
     var selectedBookId by remember { mutableStateOf<String?>(null) }
@@ -280,6 +286,41 @@ fun ProgressScreen(
                         )
                     }
                     
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(
+                        text = "Focus Dashboard",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ProgressStatCard(
+                            icon = Icons.Default.Timer,
+                            label = "Focus Mins",
+                            value = "${userProfile.totalFocusReadingMinutes}",
+                            modifier = Modifier.weight(1f),
+                            gradientColors = listOf(Color(0xFF10B981), Color(0xFF047857))
+                        )
+                        ProgressStatCard(
+                            icon = Icons.Default.Book,
+                            label = "Stable Sessions",
+                            value = "${userProfile.totalStableSessions}",
+                            modifier = Modifier.weight(1f),
+                            gradientColors = listOf(Color(0xFFF59E0B), Color(0xFFD97706))
+                        )
+                        ProgressStatCard(
+                            icon = Icons.Default.Timer,
+                            label = "Deep Streak",
+                            value = "${userProfile.deepFocusConsecutiveDays}",
+                            modifier = Modifier.weight(1f),
+                            gradientColors = listOf(Color(0xFF8B5CF6), Color(0xFF6D28D9))
+                        )
+                    }
+                    
                     Spacer(modifier = Modifier.height(32.dp))
                     Text(
                         text = "Currently Reading",
@@ -299,6 +340,9 @@ fun ProgressScreen(
                         onLogClick = {
                             selectedBookId = book.id
                             showDialog = true
+                        },
+                        onReadClick = {
+                            navController.navigate(com.example.hillcitylibrary.ui.navigation.Screen.Reading.createRoute(book.id))
                         }
                     )
                 }
@@ -404,7 +448,7 @@ fun ProgressStatCard(
 }
 
 @Composable
-fun ProgressBookItem(book: Book, onLogClick: () -> Unit) {
+fun ProgressBookItem(book: Book, onLogClick: () -> Unit, onReadClick: () -> Unit) {
     val progress = book.progress?.currentPage ?: 0
     val total = book.pageCount
     val percentage = if (total > 0) progress.toFloat() / total else 0f
@@ -474,15 +518,31 @@ fun ProgressBookItem(book: Book, onLogClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(12.dp))
-            Button(
-                onClick = onLogClick,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Log Reading Session", fontWeight = FontWeight.SemiBold)
+                Button(
+                    onClick = onLogClick,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Text("Manual Log")
+                }
+                
+                Button(
+                    onClick = onReadClick,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Read Now", fontWeight = FontWeight.SemiBold)
+                }
             }
         }
     }

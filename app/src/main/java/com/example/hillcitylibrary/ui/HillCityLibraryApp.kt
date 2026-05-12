@@ -303,6 +303,11 @@ fun HillCityLibraryApp(
                     val bookId = backStackEntry.arguments?.getString("bookId")
                     BookDetailsScreen(navController, bookId, viewModel)
                 }
+                
+                composable(Screen.Reading.route) { backStackEntry ->
+                    val bookId = backStackEntry.arguments?.getString("bookId")
+                    ReadingScreen(navController, bookId)
+                }
             }
         }
     }

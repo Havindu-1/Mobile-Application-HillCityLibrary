@@ -326,7 +326,13 @@ fun BookDetailsScreen(
                     enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 50 }
                 ) {
                     Button(
-                        onClick = { viewModel.reserveBook(currentBook.id) },
+                        onClick = { 
+                            if (currentBook.isReserved) {
+                                navController.navigate(Screen.Reading.createRoute(currentBook.id))
+                            } else {
+                                viewModel.reserveBook(currentBook.id) 
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp)
@@ -336,12 +342,12 @@ fun BookDetailsScreen(
                                 spotColor = GradientStart.copy(alpha = 0.5f)
                             ),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (currentBook.isReserved) MaterialTheme.colorScheme.secondary else GradientStart
+                            containerColor = if (currentBook.isReserved) MaterialTheme.colorScheme.primary else GradientStart
                         ),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Text(
-                            text = if (currentBook.isReserved) "Booked / In Progress" else "Book / Reserve",
+                            text = if (currentBook.isReserved) "Read Book" else "Book / Reserve",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )

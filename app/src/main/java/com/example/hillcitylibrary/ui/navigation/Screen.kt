@@ -25,6 +25,9 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object BookDetails : Screen("book_details/{bookId}", "Book Details") {
         fun createRoute(bookId: String) = "book_details/$bookId"
     }
+    object Reading : Screen("reading/{bookId}", "Reading") {
+        fun createRoute(bookId: String) = "reading/$bookId"
+    }
     object Cart : Screen("cart", "Cart")
 
     object Login : Screen("login", "Login")
