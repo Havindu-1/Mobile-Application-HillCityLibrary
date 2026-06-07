@@ -1,4 +1,7 @@
 package com.example.hillcitylibrary.ui.navigation
+import java.net.URLEncoder
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -23,15 +26,27 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object Profile : Screen("profile", "Profile", Icons.Filled.Person)
     object Settings : Screen("settings", "Settings")
     object BookDetails : Screen("book_details/{bookId}", "Book Details") {
-        fun createRoute(bookId: String) = "book_details/$bookId"
+        fun createRoute(bookId: String): String {
+            val encoded = URLEncoder.encode(bookId, StandardCharsets.UTF_8.toString())
+            return "book_details/$encoded"
+        }
+        fun decodeId(bookId: String): String =
+            URLDecoder.decode(bookId, StandardCharsets.UTF_8.toString())
     }
     object Reading : Screen("reading/{bookId}", "Reading") {
-        fun createRoute(bookId: String) = "reading/$bookId"
+        fun createRoute(bookId: String): String {
+            val encoded = URLEncoder.encode(bookId, StandardCharsets.UTF_8.toString())
+            return "reading/$encoded"
+        }
+        fun decodeId(bookId: String): String =
+            URLDecoder.decode(bookId, StandardCharsets.UTF_8.toString())
     }
     object Cart : Screen("cart", "Cart")
+    object Scanner : Screen("scanner", "Scanner")
 
     object Login : Screen("login", "Login")
     object SignUp : Screen("signup", "Sign Up")
+    object ForgotPassword : Screen("forgot_password", "Forgot Password")
 }
 
 

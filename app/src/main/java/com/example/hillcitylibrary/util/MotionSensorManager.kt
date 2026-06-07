@@ -25,9 +25,13 @@ class MotionSensorManager(context: Context) : SensorEventListener {
     private val _stabilityScore = MutableStateFlow(100f)
     val stabilityScore: StateFlow<Float> = _stabilityScore.asStateFlow()
 
-    // Thresholds
+    // Thresholds: gravity at rest = ~9.8 m/s²
+    // Stable zone: 8.5 – 10.8 (at rest in any orientation)
+    // Moving: outside stable zone but not violently shaking
+    // Shaking: > 15 m/s²
     private val SHAKE_THRESHOLD = 15f
-    private val MOVE_THRESHOLD = 11f // Normal gravity is ~9.8m/s^2
+    private val STABLE_MIN = 8.5f
+    private val STABLE_MAX = 10.8f
 
     // Rolling variables for stability score
     private var lastUpdateMillis = 0L
@@ -63,7 +67,7 @@ class MotionSensorManager(context: Context) : SensorEventListener {
                 // Determine Motion State
                 val currentState = when {
                     gForce > SHAKE_THRESHOLD -> MotionState.SHAKING
-                    gForce > MOVE_THRESHOLD || gForce < 8f -> MotionState.MOVING
+                    gForce < STABLE_MIN || gForce > STABLE_MAX -> MotionState.MOVING
                     else -> MotionState.STABLE
                 }
 

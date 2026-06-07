@@ -17,6 +17,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import java.util.UUID
+import com.example.hillcitylibrary.data.api.ApiClient
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import android.util.Log
 
 class ShopViewModel : ViewModel() {
 
@@ -139,6 +144,12 @@ class ShopViewModel : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    private val _visibleBooksLimit = MutableStateFlow(10)
+    val visibleBooksLimit: StateFlow<Int> = _visibleBooksLimit.asStateFlow()
+
+    private val _networkError = MutableStateFlow(false)
+    val networkError: StateFlow<Boolean> = _networkError.asStateFlow()
+
     private val _orders = MutableStateFlow<List<Order>>(emptyList())
     val orders: StateFlow<List<Order>> = _orders.asStateFlow()
 
@@ -161,7 +172,8 @@ class ShopViewModel : ViewModel() {
             val matchesCategory = category == null || category == BookGenre.ALL || book.genre == category
             val matchesSearch = query.isEmpty() ||
                 book.title.contains(query, ignoreCase = true) ||
-                book.author.contains(query, ignoreCase = true)
+                book.author.contains(query, ignoreCase = true) ||
+                !shopBooksData.contains(book) // Always show API results
             matchesCategory && matchesSearch
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), shopBooksData)
@@ -232,10 +244,66 @@ class ShopViewModel : ViewModel() {
 
     fun setCategory(category: BookGenre?) {
         _selectedCategory.value = category
+        _visibleBooksLimit.value = 10
     }
+
+    private var searchJob: Job? = null
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+        _visibleBooksLimit.value = 10
+        
+        searchJob?.cancel()
+        if (query.isBlank()) {
+            _shopBooks.value = shopBooksData
+            return
+        }
+
+        searchJob = viewModelScope.launch {
+            delay(500) // debounce
+            try {
+                val response = ApiClient.openLibraryService.searchBooks(query = query)
+                _networkError.value = false
+                val mappedBooks = response.docs?.mapNotNull { doc ->
+                    val pageCount = doc.numberOfPagesMedian ?: 300
+                    val pseudoPrice = 299.0 + (kotlin.math.abs(doc.title.hashCode()) % 700)
+                    
+                    ShopBook(
+                        id = doc.key,
+                        title = doc.title,
+                        author = doc.authorName?.joinToString(", ") ?: "Unknown Author",
+                        description = doc.firstSentence?.joinToString(" ") ?: "No description available.",
+                        coverImg = null,
+                        coverUrl = doc.coverI?.let { "https://covers.openlibrary.org/b/id/$it-L.jpg" },
+                        genre = BookGenre.ALL,
+                        pageCount = pageCount,
+                        rating = doc.ratingsAverage ?: 4.0,
+                        price = pseudoPrice,
+                        discountPercent = (kotlin.math.abs(doc.title.hashCode()) % 3) * 10,
+                        isNew = doc.firstPublishYear != null && doc.firstPublishYear > 2020,
+                        isBestSeller = (doc.ratingsAverage ?: 0.0) >= 4.5
+                    )
+                } ?: emptyList()
+                
+                if (mappedBooks.isNotEmpty()) {
+                    _shopBooks.value = mappedBooks
+                } else {
+                    _shopBooks.value = shopBooksData.filter {
+                        it.title.contains(query, ignoreCase = true) || it.author.contains(query, ignoreCase = true)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ShopViewModel", "Error searching books", e)
+                _networkError.value = true
+                _shopBooks.value = shopBooksData.filter {
+                    it.title.contains(query, ignoreCase = true) || it.author.contains(query, ignoreCase = true)
+                }
+            }
+        }
+    }
+
+    fun loadMoreBooks() {
+        _visibleBooksLimit.value += 10
     }
 
     fun getBook(bookId: String): ShopBook? {

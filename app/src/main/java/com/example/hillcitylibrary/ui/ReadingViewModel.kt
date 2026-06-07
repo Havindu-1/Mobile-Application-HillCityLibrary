@@ -3,6 +3,7 @@ package com.example.hillcitylibrary.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hillcitylibrary.di.DependencyProvider
 import com.example.hillcitylibrary.util.AmbientLightSensorManager
 import com.example.hillcitylibrary.util.GamificationManager
 import kotlinx.coroutines.Job
@@ -13,18 +14,25 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import com.example.hillcitylibrary.util.MotionSensorManager
 import com.example.hillcitylibrary.util.MotionState
+import com.example.hillcitylibrary.util.NoiseMonitor
 
 class ReadingViewModel(application: Application) : AndroidViewModel(application) {
     private val gamificationManager = GamificationManager(application)
     private val sensorManager = AmbientLightSensorManager(application)
     private val motionSensorManager = MotionSensorManager(application)
+    private val settingsManager = DependencyProvider.provideSettingsManager(application)
 
     val userProfile = gamificationManager.userProfile
     val newlyUnlockedAchievement = gamificationManager.newlyUnlockedAchievement
     val isDarkEnvironment = sensorManager.isDarkEnvironment
+    val ambientLux = sensorManager.ambientLux
 
     val motionState = motionSensorManager.motionState
     val stabilityScore = motionSensorManager.stabilityScore
+
+    // Noise monitor data (published by NoiseMonitor singleton)
+    val currentDecibels = NoiseMonitor.currentDecibels
+    val isNoisyEnvironment = NoiseMonitor.isNoisyEnvironment
 
     private val _readingSessionMinutes = MutableStateFlow(0)
     val readingSessionMinutes: StateFlow<Int> = _readingSessionMinutes.asStateFlow()
@@ -44,9 +52,26 @@ class ReadingViewModel(application: Application) : AndroidViewModel(application)
     private var timerJob: Job? = null
 
     init {
-        sensorManager.startListening()
-        motionSensorManager.startListening()
-
+        viewModelScope.launch {
+            settingsManager.isLightSensorEnabled.collect { enabled ->
+                if (enabled) {
+                    sensorManager.startListening()
+                } else {
+                    sensorManager.stopListening()
+                }
+            }
+        }
+ 
+        viewModelScope.launch {
+            settingsManager.isMotionSensorEnabled.collect { enabled ->
+                if (enabled) {
+                    motionSensorManager.startListening()
+                } else {
+                    motionSensorManager.stopListening()
+                }
+            }
+        }
+ 
         viewModelScope.launch {
             motionState.collect { state ->
                 if (state == MotionState.SHAKING || state == MotionState.MOVING) {

@@ -18,7 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.IconButton
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.filled.Book
@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,18 +57,30 @@ import androidx.navigation.NavController
 import com.example.hillcitylibrary.model.Book
 import com.example.hillcitylibrary.ui.BookViewModel
 import com.example.hillcitylibrary.ui.components.GreetingHeader
-import com.example.hillcitylibrary.ui.theme.GradientEnd
-import com.example.hillcitylibrary.ui.theme.GradientStart
-import com.example.hillcitylibrary.ui.theme.SuccessGreen
+
 import com.example.hillcitylibrary.util.GamificationManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ProgressScreen(
     navController: NavController,
     viewModel: BookViewModel = viewModel()
 ) {
-    val books by viewModel.books.collectAsState()
+    val books by viewModel.localBooks.collectAsState()
     val stats by viewModel.readingStats.collectAsState() // Triple(completed, totalPages, totalTime)
     val inProgressBooks = books.filter { it.isReserved }
 
@@ -122,230 +135,205 @@ fun ProgressScreen(
         )
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)
-        ) {
-            // Item 1: Header
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    GradientStart,
-                                    GradientEnd
-                                )
-                            )
-                        )
-                        .padding(top = 48.dp, bottom = 24.dp, start = 20.dp, end = 20.dp)
-                ) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            LargeTopAppBar(
+                title = { 
                     Column {
-                        GreetingHeader(
-                            modifier = Modifier.padding(bottom = 8.dp),
-                            textColor = Color.White
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(
-                                onClick = { navController.popBackStack() },
-                                modifier = Modifier.padding(end = 8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = Color.White
-                                )
-                            }
-                            Text(
-                                text = "Your Reading Progress",
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
+                        Text("Focus Dashboard", fontWeight = FontWeight.Bold)
+                        GreetingHeader(textColor = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                }
-            }
-
-            // Item 2: Timer and Stats Container
+                },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                ),
+                scrollBehavior = scrollBehavior
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = PaddingValues(
+                top = innerPadding.calculateTopPadding() + 16.dp,
+                bottom = 24.dp,
+                start = 20.dp,
+                end = 20.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            // Top Tier: Overall Statistics
             item {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    // Active Reading Timer Section
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 24.dp),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Current Session",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            // Time Display
-                            val hours = elapsedTimeSeconds / 3600
-                            val minutes = (elapsedTimeSeconds % 3600) / 60
-                            val seconds = elapsedTimeSeconds % 60
-                            Text(
-                                text = String.format("%02d:%02d:%02d", hours, minutes, seconds),
-                                fontSize = 40.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                Button(
-                                    onClick = { isTimerRunning = !isTimerRunning },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (isTimerRunning) Color(0xFFEF4444) else SuccessGreen
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(
-                                        if (isTimerRunning) Icons.Default.Timer else Icons.Default.Timer, // Could swap icon
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(if (isTimerRunning) "Stop" else "Start")
-                                }
-                                
-                                if (!isTimerRunning && elapsedTimeSeconds > 0) {
-                                    Button(
-                                        onClick = {
-                                            // Placeholder action
-                                        },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.secondary
-                                        ),
-                                        modifier = Modifier.weight(1f),
-                                        enabled = false 
-                                    ) {
-                                        Text("Select Book below")
-                                    }
-                                }
-                            }
-                            if (!isTimerRunning && elapsedTimeSeconds > 0) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    "Select a book below to log this time",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    // Stats Row with gradient cards
-                    Row(
+                Column {
+                    Text(
+                        text = "Overall Statistics",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        maxItemsInEachRow = 2
                     ) {
                         ProgressStatCard(
                             icon = Icons.Default.Book,
-                            label = "Books",
+                            label = "Books Read",
                             value = stats.first.toString(),
                             modifier = Modifier.weight(1f),
-                            gradientColors = listOf(Color(0xFF6366F1), Color(0xFF8B5CF6))
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         ProgressStatCard(
                             icon = Icons.Default.Book,
-                            label = "Pages",
+                            label = "Total Pages",
                             value = stats.second.toString(),
                             modifier = Modifier.weight(1f),
-                            gradientColors = listOf(Color(0xFF06B6D4), Color(0xFF0891B2))
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         val h = stats.third / 60
                         val m = stats.third % 60
                         ProgressStatCard(
                             icon = Icons.Default.Timer,
-                            label = "Time",
+                            label = "Total Time",
                             value = "${h}h ${m}m",
                             modifier = Modifier.weight(1f),
-                            gradientColors = listOf(Color(0xFFEC4899), Color(0xFFDB2777))
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                         )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        text = "Focus Dashboard",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
                         ProgressStatCard(
                             icon = Icons.Default.Timer,
                             label = "Focus Mins",
                             value = "${userProfile.totalFocusReadingMinutes}",
                             modifier = Modifier.weight(1f),
-                            gradientColors = listOf(Color(0xFF10B981), Color(0xFF047857))
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         ProgressStatCard(
                             icon = Icons.Default.Book,
                             label = "Stable Sessions",
                             value = "${userProfile.totalStableSessions}",
                             modifier = Modifier.weight(1f),
-                            gradientColors = listOf(Color(0xFFF59E0B), Color(0xFFD97706))
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         ProgressStatCard(
                             icon = Icons.Default.Timer,
                             label = "Deep Streak",
-                            value = "${userProfile.deepFocusConsecutiveDays}",
+                            value = "${userProfile.deepFocusConsecutiveDays} Days",
                             modifier = Modifier.weight(1f),
-                            gradientColors = listOf(Color(0xFF8B5CF6), Color(0xFF6D28D9))
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                     }
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
-                    Text(
-                        text = "Currently Reading",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
 
-            // Item 3: Book List
-            items(inProgressBooks) { book ->
-                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
-                    ProgressBookItem(
-                        book = book,
-                        onLogClick = {
-                            selectedBookId = book.id
-                            showDialog = true
-                        },
-                        onReadClick = {
-                            navController.navigate(com.example.hillcitylibrary.ui.navigation.Screen.Reading.createRoute(book.id))
+            // Middle Tier: Quick Actions (Timer)
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Active Session",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Time Display
+                        val hours = elapsedTimeSeconds / 3600
+                        val minutes = (elapsedTimeSeconds % 3600) / 60
+                        val seconds = elapsedTimeSeconds % 60
+                        Text(
+                            text = String.format("%02d:%02d:%02d", hours, minutes, seconds),
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        FilledTonalButton(
+                            onClick = { isTimerRunning = !isTimerRunning },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = if (isTimerRunning) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primary,
+                                contentColor = if (isTimerRunning) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Icon(
+                                Icons.Default.Timer,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isTimerRunning) "Stop Timer" else "Start Timer",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                    )
+                        
+                        if (!isTimerRunning && elapsedTimeSeconds > 0) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Select a book below to log your ${elapsedTimeSeconds / 60}m session.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
+            }
+
+            // Bottom Tier: Currently Reading
+            item {
+                Text(
+                    text = "Currently Reading",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+            
+            items(inProgressBooks) { book ->
+                ProgressBookItem(
+                    book = book,
+                    onLogClick = {
+                        selectedBookId = book.id
+                        showDialog = true
+                    },
+                    onReadClick = {
+                        navController.navigate(com.example.hillcitylibrary.ui.navigation.Screen.Reading.createRoute(book.id))
+                    }
+                )
             }
         }
         
@@ -374,7 +362,7 @@ fun ProgressScreen(
                             text = "Congratulations!",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = GradientEnd
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
@@ -385,7 +373,7 @@ fun ProgressScreen(
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(
                             onClick = { showCelebration = false },
-                            colors = ButtonDefaults.buttonColors(containerColor = GradientEnd),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("Awesome!", color = Color.White)
@@ -403,45 +391,41 @@ fun ProgressStatCard(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
-    gradientColors: List<Color> = listOf(GradientStart, GradientEnd)
+    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
     Card(
-        modifier = modifier
-            .height(120.dp),
+        modifier = modifier.height(110.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        )
     ) {
-        Box(
+        Column(
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = Brush.linearGradient(gradientColors)
-                )
                 .padding(16.dp)
         ) {
-            Column(
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.8f)
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor.copy(alpha = 0.8f)
+            )
+            Column {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = contentColor
                 )
-                Column {
-                    Text(
-                        text = value,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Text(
-                        text = label,
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.9f)
-                    )
-                }
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = contentColor.copy(alpha = 0.9f)
+                )
             }
         }
     }
@@ -472,12 +456,16 @@ fun ProgressBookItem(book: Book, onLogClick: () -> Unit, onReadClick: () -> Unit
                         text = book.title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = book.author,
                         style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -505,7 +493,7 @@ fun ProgressBookItem(book: Book, onLogClick: () -> Unit, onReadClick: () -> Unit
                         .clip(RoundedCornerShape(4.dp))
                         .background(
                             brush = Brush.horizontalGradient(
-                                colors = listOf(GradientStart, GradientEnd)
+                                colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
                             )
                         )
                 )

@@ -31,16 +31,18 @@ import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +58,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -68,22 +72,26 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.hillcitylibrary.ui.BookViewModel
+import com.example.hillcitylibrary.ui.AuthViewModel
 import com.example.hillcitylibrary.ui.components.GreetingHeader
 import com.example.hillcitylibrary.ui.navigation.Screen
-import com.example.hillcitylibrary.ui.theme.AccentGold
-import com.example.hillcitylibrary.ui.theme.GradientEnd
-import com.example.hillcitylibrary.ui.theme.GradientStart
-import com.example.hillcitylibrary.ui.theme.SuccessGreen
+
 
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    viewModel: BookViewModel = viewModel()
+    viewModel: BookViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
 ) {
     val stats by viewModel.readingStats.collectAsState()
     val isDarkTheme by viewModel.isDarkTheme.collectAsState()
-    val books by viewModel.books.collectAsState()
+    val books by viewModel.localBooks.collectAsState()
     val favoriteBooks by viewModel.favoriteBooks.collectAsState()
+    val firestoreProfile by authViewModel.firestoreProfile.collectAsState()
+    val profilePictureUri by viewModel.profilePictureUri.collectAsState()
+
+    val displayName = firestoreProfile?.username ?: "Reader"
+    val displayTitle = firestoreProfile?.title ?: "Beginner Reader"
     
     // Calculate additional statistics
     val totalBooks = books.size
@@ -131,8 +139,8 @@ fun ProfileScreen(
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                GradientStart,
-                                GradientEnd
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary
                             )
                         )
                     )
@@ -153,7 +161,7 @@ fun ProfileScreen(
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
                                 tint = Color.White
                             )
@@ -172,7 +180,7 @@ fun ProfileScreen(
                             progress = { animatedProgress },
                             modifier = Modifier.size(140.dp),
                             strokeWidth = 6.dp,
-                            color = AccentGold,
+                            color = MaterialTheme.colorScheme.secondary,
                             trackColor = Color.White.copy(alpha = 0.3f),
                             strokeCap = StrokeCap.Round
                         )
@@ -184,25 +192,34 @@ fun ProfileScreen(
                                 .background(Color.White.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                modifier = Modifier.size(60.dp),
-                                tint = Color.White
-                            )
+                            if (profilePictureUri != null) {
+                                AsyncImage(
+                                    model = profilePictureUri,
+                                    contentDescription = "Profile Picture",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(60.dp),
+                                    tint = Color.White
+                                )
+                            }
                         }
                     }
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
-                        text = "John Doe",
+                        text = displayName,
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
                     Text(
-                        text = "Bookworm • Reader",
+                        text = displayTitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.9f)
                     )
@@ -212,7 +229,7 @@ fun ProfileScreen(
                     // Progress percentage
                     Card(
                         colors = CardDefaults.cardColors(
-                            containerColor = AccentGold.copy(alpha = 0.3f)
+                            containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
                         ),
                         shape = RoundedCornerShape(20.dp)
                     ) {
@@ -253,14 +270,14 @@ fun ProfileScreen(
                         icon = Icons.Default.Book,
                         label = "Books Read",
                         value = booksCompleted.toString(),
-                        color = GradientStart,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f)
                     )
                     StatCard(
-                        icon = Icons.Default.MenuBook,
+                        icon = Icons.AutoMirrored.Filled.MenuBook,
                         label = "Total Pages",
                         value = totalPagesRead.toString(),
-                        color = SuccessGreen,
+                        color = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -274,14 +291,14 @@ fun ProfileScreen(
                         icon = Icons.Default.Timer,
                         label = "Reading Time",
                         value = "${totalTimeMinutes}m",
-                        color = AccentGold,
+                        color = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.weight(1f)
                     )
                     StatCard(
                         icon = Icons.Default.Favorite,
                         label = "Favorites",
                         value = favoriteBooks.size.toString(),
-                        color = Color(0xFFEF4444),
+                        color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -335,8 +352,14 @@ fun ProfileScreen(
             }
         }
             
+        AnimatedVisibility(
+            visible = settingsVisible,
+            enter = fadeIn(tween(500)) + slideInHorizontally(tween(500)) { 50 }
+        ) {
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
@@ -350,17 +373,31 @@ fun ProfileScreen(
                         icon = Icons.Default.Settings,
                         title = "App Settings",
                         subtitle = "Manage preferences",
-                        modifier = Modifier.clickable { 
-                            navController.navigate(Screen.Settings.route) 
+                        modifier = Modifier.clickable {
+                            navController.navigate(Screen.Settings.route)
                         }
                     )
-                    
 
-                    
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
 
+                    SettingsItem(
+                        icon = Icons.AutoMirrored.Filled.ExitToApp,
+                        title = "Sign Out",
+                        subtitle = "Log out of your account",
+                        modifier = Modifier.clickable {
+                            authViewModel.signOut()
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
+                    )
                 }
             }
-            
+        }
+
             Spacer(modifier = Modifier.height(120.dp))
         }
     }
@@ -434,7 +471,7 @@ fun AchievementBadge(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isUnlocked) 
-                AccentGold.copy(alpha = 0.15f) 
+                MaterialTheme.colorScheme.secondaryContainer 
             else 
                 MaterialTheme.colorScheme.surfaceVariant
         ),
@@ -450,7 +487,7 @@ fun AchievementBadge(
                     .clip(CircleShape)
                     .background(
                         if (isUnlocked) 
-                            AccentGold 
+                            MaterialTheme.colorScheme.secondary 
                         else 
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                     ),
@@ -486,8 +523,8 @@ fun AchievementBadge(
 fun SettingsItem(
     icon: ImageVector,
     title: String,
-    subtitle: String? = null,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
     content: @Composable (() -> Unit)? = null
 ) {
     Row(
@@ -500,13 +537,13 @@ fun SettingsItem(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(GradientStart.copy(alpha = 0.15f)),
+                .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = GradientStart,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(20.dp)
             )
         }

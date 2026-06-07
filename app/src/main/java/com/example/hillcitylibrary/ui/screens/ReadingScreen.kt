@@ -224,33 +224,17 @@ fun ReadingScreen(
                     }
                 }
 
-                // Focus Stats
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Session Timer
-                    Column {
-                        Text("Session Focus", fontSize = 12.sp, color = textColor.copy(alpha = 0.6f))
-                        Text("${stableMinutes}m", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor)
-                    }
-                    
-                    // Stability Score
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Stability", fontSize = 12.sp, color = textColor.copy(alpha = 0.6f))
-                        Text("${stabilityScore.toInt()}%", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor)
-                    }
-                    
-                    // Combo Multiplier
-                    if (activeCombo > 1) {
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("Combo Active", fontSize = 12.sp, color = Color(0xFFF59E0B))
-                            Text("x$activeCombo XP", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFF59E0B))
-                        }
-                    } else {
-                        Spacer(modifier = Modifier.width(40.dp))
+                // Combo Multiplier badge (only when active)
+                if (activeCombo > 1) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Text("Combo Active", fontSize = 12.sp, color = Color(0xFFF59E0B))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("x$activeCombo XP", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFFF59E0B))
                     }
                 }
             }
