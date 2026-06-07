@@ -1,6 +1,7 @@
 package com.example.hillcitylibrary.ui.components
 
 import androidx.compose.foundation.Image
+import coil.compose.AsyncImage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
@@ -26,17 +26,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.hillcitylibrary.model.Book
-import com.example.hillcitylibrary.ui.theme.AccentGold
 
 @Composable
 fun BookCard(
@@ -47,18 +43,12 @@ fun BookCard(
     Card(
         modifier = modifier
             .width(160.dp)
-            .height(340.dp)
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-            )
             .clickable { onBookClick(book.id) },
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
             // Cover Image with gradient overlay
@@ -67,14 +57,23 @@ fun BookCard(
                     .height(220.dp)
                     .fillMaxWidth()
             ) {
-                Image(
-                    painter = painterResource(book.coverImg),
-                    contentDescription = "Book Cover",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
-                    contentScale = ContentScale.Crop
-                )
+                if (book.coverUrl != null) {
+                    AsyncImage(
+                        model = book.coverUrl,
+                        contentDescription = "Cover of ${book.title}",
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else if (book.coverImg != null) {
+                    Image(
+                        painter = painterResource(book.coverImg!!),
+                        contentDescription = "Cover of ${book.title}",
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
                 
                 // Gradient overlay for better text readability
                 Box(
@@ -90,14 +89,14 @@ fun BookCard(
                         )
                 )
                 
-                // Rating badge (Refined)
+                // Rating badge
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
                         .background(
-                            color = AccentGold.copy(alpha = 0.9f),
-                            shape = RoundedCornerShape(8.dp)
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
+                            shape = MaterialTheme.shapes.small
                         )
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
@@ -105,15 +104,14 @@ fun BookCard(
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = null,
-                            modifier = Modifier.size(10.dp),
-                            tint = Color.White
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
-                        Spacer(modifier = Modifier.width(2.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = String.format("%.1f", book.rating),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                 }
@@ -127,12 +125,10 @@ fun BookCard(
             ) {
                 Text(
                     text = book.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurface,
-                    lineHeight = 20.sp
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -140,15 +136,13 @@ fun BookCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontWeight = FontWeight.Normal // Lighter weight
+                    overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = book.genre.displayName,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                    fontWeight = FontWeight.Normal // Lighter weight
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }

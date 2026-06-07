@@ -5,7 +5,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
+import coil.compose.AsyncImage
 import androidx.compose.foundation.background
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,7 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -62,9 +65,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.hillcitylibrary.ui.BookViewModel
+import com.example.hillcitylibrary.ui.components.BookCoverImage
 import com.example.hillcitylibrary.ui.navigation.Screen
-import com.example.hillcitylibrary.ui.theme.AccentGold
-import com.example.hillcitylibrary.ui.theme.GradientStart
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,16 +78,31 @@ fun BookDetailsScreen(
 ) {
     if (bookId == null) return
 
-    val book by viewModel.getBook(bookId).collectAsState(initial = null)
+    // Observe the book that was selected before navigation
+    val selectedBook by viewModel.selectedBook.collectAsState()
+    // Also watch live updates (e.g., favorite/reserve toggle)
+    val allBooks by viewModel.combinedBooks.collectAsState()
+    val decodedId = remember(bookId) { Screen.BookDetails.decodeId(bookId) }
+    val liveBook = allBooks.find { it.id == decodedId }
 
-    book?.let { currentBook ->
+    // Prefer live update; fall back to what was selected at click time
+    val currentBook = liveBook ?: selectedBook
+
+    if (currentBook == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            androidx.compose.material3.CircularProgressIndicator()
+        }
+        return
+    }
+
+    currentBook.let { currentBook ->
         Scaffold(
             topBar = {
                 TopAppBar(
                     title = {},
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     },
                     actions = {
@@ -155,22 +173,18 @@ fun BookDetailsScreen(
                     visible = coverVisible,
                     enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { -50 }
                 ) {
-                    Box(
+                    Card(
                         modifier = Modifier
                             .height(300.dp)
-                            .width(200.dp)
-                            .shadow(
-                                elevation = 16.dp,
-                                shape = RoundedCornerShape(16.dp),
-                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                            )
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color.Gray)
+                            .width(200.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 16.dp),
+                        colors = CardDefaults.elevatedCardColors()
                     ) {
-                        Image(
-                            painter = painterResource(id = currentBook.coverImg),
-                            contentDescription = currentBook.title,
-                            contentScale = ContentScale.Crop,
+                        BookCoverImage(
+                            coverUrl = currentBook.coverUrl,
+                            coverImg = currentBook.coverImg,
+                            title = currentBook.title,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -219,7 +233,8 @@ fun BookDetailsScreen(
                             MetadataItem(
                                 icon = Icons.Default.Star,
                                 text = String.format("%.1f", currentBook.rating),
-                                iconTint = AccentGold
+                                iconTint = MaterialTheme.colorScheme.secondary,
+                                contentDescription = "Rating"
                             )
 
                             Spacer(modifier = Modifier.width(24.dp))
@@ -335,14 +350,10 @@ fun BookDetailsScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
-                            .shadow(
-                                elevation = 8.dp,
-                                shape = RoundedCornerShape(16.dp),
-                                spotColor = GradientStart.copy(alpha = 0.5f)
-                            ),
+                            .height(56.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (currentBook.isReserved) MaterialTheme.colorScheme.primary else GradientStart
+                            containerColor = MaterialTheme.colorScheme.primary
                         ),
                         shape = RoundedCornerShape(16.dp)
                     ) {
@@ -363,12 +374,13 @@ fun BookDetailsScreen(
 fun MetadataItem(
     icon: ImageVector,
     text: String,
-    iconTint: Color = MaterialTheme.colorScheme.onSurface
+    iconTint: Color = MaterialTheme.colorScheme.onSurface,
+    contentDescription: String? = null
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = contentDescription,
             tint = iconTint,
             modifier = Modifier.size(20.dp)
         )
