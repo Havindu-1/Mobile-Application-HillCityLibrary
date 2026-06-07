@@ -1,10 +1,15 @@
 package com.example.hillcitylibrary.ui
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hillcitylibrary.data.LibraryRepository
+import com.example.hillcitylibrary.data.SettingsManager
+import com.example.hillcitylibrary.di.DependencyProvider
 import com.example.hillcitylibrary.model.Book
 import com.example.hillcitylibrary.model.BookGenre
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -12,10 +17,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class BookViewModel : ViewModel() {
-    private val repository = LibraryRepository
+class BookViewModel(application: Application) : AndroidViewModel(application) {
+    private val repository = DependencyProvider.provideRepository(application)
+    val gamificationManager = DependencyProvider.provideGamificationManager(application)
+    private val settingsManager = DependencyProvider.provideSettingsManager(application)
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -23,7 +30,13 @@ class BookViewModel : ViewModel() {
     private val _selectedGenre = MutableStateFlow<BookGenre?>(null)
     val selectedGenre: StateFlow<BookGenre?> = _selectedGenre.asStateFlow()
 
-    val books: StateFlow<List<Book>> = repository.books
+    private val _visibleBooksLimit = MutableStateFlow(10)
+    val visibleBooksLimit: StateFlow<Int> = _visibleBooksLimit.asStateFlow()
+
+    // Combined stream of local library books and search results
+    val localBooks: StateFlow<List<Book>> = repository.libraryBooks
+    val searchResults: StateFlow<List<Book>> = repository.searchResults
+    val networkError = repository.networkError
 
     // Sorting
     enum class SortOption {
@@ -35,6 +48,7 @@ class BookViewModel : ViewModel() {
 
     fun onSortOptionSelected(option: SortOption) {
         _sortOption.value = option
+        _visibleBooksLimit.value = 10
     }
 
     // View Mode
@@ -45,16 +59,42 @@ class BookViewModel : ViewModel() {
         _isGridView.value = !_isGridView.value
     }
 
+    val profilePictureUri: StateFlow<String?> = settingsManager.profilePictureUri
+
+    fun setProfilePictureUri(uri: String?) {
+        settingsManager.setProfilePictureUri(uri)
+    }
+
+    val combinedBooks: StateFlow<List<Book>> = combine(localBooks, searchResults) { local, search ->
+        val map = mutableMapOf<String, Book>()
+        search.forEach { map[it.id] = it }
+        local.forEach { map[it.id] = it } // local overrides search, preserving progress/favorites
+        val result = map.values.toList()
+        if (result.isEmpty()) {
+            com.example.hillcitylibrary.data.MockData.sampleBooks
+        } else {
+            result
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.example.hillcitylibrary.data.MockData.sampleBooks)
+
     // Derived state for filtered books
     val filteredBooks: StateFlow<List<Book>> = combine(
-        books,
+        combinedBooks,
         _searchQuery,
         _selectedGenre,
         _sortOption
-    ) { currentBooks, query, genre, sort ->
-        val filtered = currentBooks.filter { book ->
-            val matchesQuery = book.title.contains(query, ignoreCase = true) ||
-                    book.author.contains(query, ignoreCase = true)
+    ) { allBooks, query, genre, sort ->
+        val filtered = allBooks.filter { book ->
+            val matchesQuery = if (query.isBlank()) {
+                true
+            } else {
+                val terms = query.trim().split(Regex("\\s+"))
+                terms.all { term ->
+                    book.title.contains(term, ignoreCase = true) ||
+                    book.author.contains(term, ignoreCase = true) ||
+                    book.description.contains(term, ignoreCase = true)
+                }
+            }
             val matchesGenre = genre == null || genre == BookGenre.ALL || book.genre == genre
             matchesQuery && matchesGenre
         }
@@ -67,30 +107,80 @@ class BookViewModel : ViewModel() {
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
+        initialValue = com.example.hillcitylibrary.data.MockData.sampleBooks
     )
 
-    val favoriteBooks: StateFlow<List<Book>> = books
+    init {
+        // Trigger a default search so the library isn't empty initially
+        viewModelScope.launch {
+            repository.searchBooksOnline("fiction")
+        }
+    }
+
+    val favoriteBooks: StateFlow<List<Book>> = localBooks
         .map { it.filter { book -> book.isFavorite } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private var searchJob: Job? = null
+
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
+        _visibleBooksLimit.value = 10
+        searchJob?.cancel()
+        if (query.isBlank()) {
+            val currentGenre = _selectedGenre.value
+            if (currentGenre != null && currentGenre != BookGenre.ALL) {
+                // If query is cleared but a genre is selected, search by genre
+                searchJob = viewModelScope.launch {
+                    delay(500)
+                    repository.searchBooksOnline("subject:${currentGenre.displayName.lowercase()}", currentGenre)
+                }
+            } else {
+                repository.clearSearchResults()
+            }
+        } else {
+            searchJob = viewModelScope.launch {
+                delay(500) // debounce
+                val currentGenre = _selectedGenre.value ?: BookGenre.ALL
+                repository.searchBooksOnline(query, currentGenre)
+            }
+        }
     }
 
     fun onGenreSelected(genre: BookGenre?) {
         _selectedGenre.value = genre
+        _visibleBooksLimit.value = 10
+        
+        searchJob?.cancel()
+        val currentQuery = _searchQuery.value
+        if (currentQuery.isNotBlank()) {
+            searchJob = viewModelScope.launch {
+                repository.searchBooksOnline(currentQuery, genre ?: BookGenre.ALL)
+            }
+        } else if (genre != null && genre != BookGenre.ALL) {
+            searchJob = viewModelScope.launch {
+                repository.searchBooksOnline("subject:${genre.displayName.lowercase()}", genre)
+            }
+        } else {
+            repository.clearSearchResults()
+        }
+    }
+
+    fun loadMoreBooks() {
+        _visibleBooksLimit.value += 10
     }
 
     fun toggleFavorite(bookId: String) {
-        repository.toggleFavorite(bookId)
+        val currentBook = combinedBooks.value.find { it.id == bookId }
+        repository.toggleFavorite(bookId, currentBook)
     }
 
     fun reserveBook(bookId: String) {
-        repository.reserveBook(bookId)
+        val currentBook = combinedBooks.value.find { it.id == bookId }
+        repository.reserveBook(bookId, currentBook)
     }
 
-    val readingStats = books.map { currentBooks ->
+    val readingStats = localBooks.map { currentBooks ->
         val completed = currentBooks.count { it.progress?.isCompleted == true }
         val totalPages = currentBooks.sumOf { it.progress?.currentPage ?: 0 }
         val totalTime = currentBooks.sumOf { it.progress?.totalTimeSpentMinutes ?: 0 }
@@ -98,14 +188,37 @@ class BookViewModel : ViewModel() {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Triple(0, 0, 0L))
 
     fun updateProgress(bookId: String, pagesRead: Int, timeSpentMinutes: Long) {
-       repository.updateProgress(bookId, pagesRead, timeSpentMinutes)
+        val currentBook = combinedBooks.value.find { it.id == bookId }
+        repository.updateProgress(bookId, pagesRead, timeSpentMinutes, currentBook)
+        viewModelScope.launch {
+            gamificationManager.addReadingProgress(pagesRead, timeSpentMinutes)
+        }
     }
 
-    private val _isDarkTheme = MutableStateFlow(false)
-    val isDarkTheme: StateFlow<Boolean> = _isDarkTheme.asStateFlow()
-
+    val isDarkTheme = settingsManager.isDarkTheme
+    val isLightSensorEnabled = settingsManager.isLightSensorEnabled
+    val isMotionSensorEnabled = settingsManager.isMotionSensorEnabled
+    val isNoiseSensorEnabled = settingsManager.isNoiseSensorEnabled
+    val isNotificationsEnabled = settingsManager.isNotificationsEnabled
+ 
     fun toggleTheme(isDark: Boolean) {
-        _isDarkTheme.value = isDark
+        settingsManager.setDarkTheme(isDark)
+    }
+ 
+    fun toggleLightSensor(enabled: Boolean) {
+        settingsManager.setLightSensorEnabled(enabled)
+    }
+ 
+    fun toggleMotionSensor(enabled: Boolean) {
+        settingsManager.setMotionSensorEnabled(enabled)
+    }
+ 
+    fun toggleNoiseSensor(enabled: Boolean) {
+        settingsManager.setNoiseSensorEnabled(enabled)
+    }
+ 
+    fun toggleNotifications(enabled: Boolean) {
+        settingsManager.setNotificationsEnabled(enabled)
     }
 
     // Collections
@@ -116,5 +229,15 @@ class BookViewModel : ViewModel() {
     fun addBookToCollection(collectionId: String, bookId: String) = repository.addBookToCollection(collectionId, bookId)
     fun removeBookFromCollection(collectionId: String, bookId: String) = repository.removeBookFromCollection(collectionId, bookId)
 
-    fun getBook(bookId: String) = books.map { it.find { book -> book.id == bookId } }
+    // Book selected for Details screen - persists across recompositions
+    private val _selectedBook = MutableStateFlow<Book?>(null)
+    val selectedBook: StateFlow<Book?> = _selectedBook.asStateFlow()
+
+    fun selectBook(bookId: String) {
+        _selectedBook.value = combinedBooks.value.find { it.id == bookId }
+    }
+
+    fun getBook(bookId: String) = combinedBooks.map { allBooks ->
+        allBooks.find { it.id == bookId }
+    }
 }
