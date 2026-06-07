@@ -7,7 +7,9 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import coil.compose.AsyncImage
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
@@ -33,7 +36,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -41,6 +44,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Surface
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -74,10 +79,7 @@ import com.example.hillcitylibrary.model.ShopBook
 import com.example.hillcitylibrary.ui.ShopViewModel
 import com.example.hillcitylibrary.ui.components.GreetingHeader
 import com.example.hillcitylibrary.ui.navigation.Screen
-import com.example.hillcitylibrary.ui.theme.AccentGold
-import com.example.hillcitylibrary.ui.theme.GradientEnd
-import com.example.hillcitylibrary.ui.theme.GradientStart
-import com.example.hillcitylibrary.ui.theme.SuccessGreen
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +91,12 @@ fun ShopScreen(
     val cartItemCount by viewModel.cartItemCount.collectAsState(initial = 0)
     val selectedCategory by viewModel.selectedCategory.collectAsState(initial = null)
     val searchQuery by viewModel.searchQuery.collectAsState(initial = "")
+    val visibleBooksLimit by viewModel.visibleBooksLimit.collectAsState()
+    val networkError by viewModel.networkError.collectAsState(initial = false)
+
+    val visibleBooks = remember(shopBooks, visibleBooksLimit) {
+        shopBooks.take(visibleBooksLimit)
+    }
 
     // Animation States
     var headerVisible by remember { mutableStateOf(false) }
@@ -119,8 +127,8 @@ fun ShopScreen(
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                GradientStart,
-                                GradientEnd
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary
                             )
                         )
                     )
@@ -128,7 +136,7 @@ fun ShopScreen(
             ) {
                 Column {
                     GreetingHeader(
-                        modifier = Modifier.padding(bottom = 8.dp),
+                        modifier = Modifier.padding(bottom = 12.dp),
                         textColor = Color.White
                     )
                     Row(
@@ -144,7 +152,7 @@ fun ShopScreen(
                                     .padding(end = 8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.ArrowBack,
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Back",
                                     tint = Color.White
                                 )
@@ -169,8 +177,8 @@ fun ShopScreen(
                             badge = {
                                 if (cartItemCount > 0) {
                                     Badge(
-                                        containerColor = AccentGold,
-                                        contentColor = Color.White
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                     ) {
                                         Text("$cartItemCount")
                                     }
@@ -216,12 +224,14 @@ fun ShopScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         },
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(24.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = Color.White,
                             unfocusedContainerColor = Color.White,
                             focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black
                         ),
                         singleLine = true
                     )
@@ -246,7 +256,7 @@ fun ShopScreen(
                     selected = selectedCategory == null,
                     onClick = { viewModel.setCategory(null) }
                 )
-                BookGenre.values().filter { it != BookGenre.ALL }.forEach { genre ->
+                BookGenre.entries.filter { it != BookGenre.ALL }.forEach { genre ->
                     CategoryChip(
                         label = genre.displayName,
                         selected = selectedCategory == genre,
@@ -256,13 +266,33 @@ fun ShopScreen(
             }
         }
 
+        // Network Error Banner
+        AnimatedVisibility(visible = networkError) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.errorContainer)
+                    .padding(12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No connection. Showing offline data.",
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
         // Books Grid - Single scrollable list
         AnimatedVisibility(
             visible = contentVisible,
             enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { 100 }
         ) {
             LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+                columns = GridCells.Adaptive(minSize = 160.dp),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -297,12 +327,44 @@ fun ShopScreen(
                         }
                     }
                 } else {
-                    items(shopBooks) { book ->
+                    items(visibleBooks) { book ->
                         ShopBookCard(
                             book = book,
                             onAddToCart = { viewModel.addToCart(book) }
                         )
                     }
+                    if (shopBooks.size > visibleBooksLimit) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.7f)
+                                        .height(48.dp)
+                                        .clip(MaterialTheme.shapes.large)
+                                        .background(
+                                            brush = Brush.horizontalGradient(
+                                                colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
+                                            )
+                                        )
+                                        .clickable { viewModel.loadMoreBooks() },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "More",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(80.dp)) }
                 }
             }
         }
@@ -319,17 +381,18 @@ fun CategoryChip(
     FilterChip(
         selected = selected,
         onClick = onClick,
-        label = { Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium) },
+        label = { Text(label, style = MaterialTheme.typography.labelLarge) },
         leadingIcon = if (selected) {
             { Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(16.dp)) }
         } else null,
         colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = GradientStart,
-            selectedLabelColor = Color.White,
+            selectedContainerColor = MaterialTheme.colorScheme.primary,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
-        shape = RoundedCornerShape(20.dp),
-        border = null
+        shape = MaterialTheme.shapes.extraLarge,
+        border = null,
+        modifier = Modifier.height(48.dp) // Minimum touch target size
     )
 }
 
@@ -338,24 +401,19 @@ fun ShopBookCard(
     book: ShopBook,
     onAddToCart: () -> Unit
 ) {
-    Card(
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .height(420.dp) // Increased height for better spacing
-            .shadow(
-                elevation = 4.dp, // Reduced elevation for cleaner look
-                shape = RoundedCornerShape(16.dp),
-                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-            ),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
+            .height(440.dp),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier
-                .padding(10.dp)
+                .padding(12.dp)
                 .fillMaxSize()
         ) {
             // Cover Image Section
@@ -366,57 +424,77 @@ fun ShopBookCard(
                     .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                Image(
-                    painter = painterResource(id = book.coverImg),
-                    contentDescription = book.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                if (book.coverUrl != null) {
+                    AsyncImage(
+                        model = book.coverUrl,
+                        contentDescription = "Cover of ${book.title}",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else if (book.coverImg != null) {
+                    Image(
+                        painter = painterResource(id = book.coverImg),
+                        contentDescription = "Cover of ${book.title}",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
 
                 // Badges (New/Best)
                 Row(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     if (book.isNew) {
-                        Badge(
-                            containerColor = SuccessGreen,
-                            contentColor = Color.White,
-                            modifier = Modifier.padding(0.dp)
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            contentColor = MaterialTheme.colorScheme.onTertiary,
+                            shadowElevation = 2.dp
                         ) {
-                            Text("NEW", fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                            Text(
+                                "NEW", 
+                                style = MaterialTheme.typography.labelSmall, 
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                            )
                         }
                     }
                     if (book.isBestSeller) {
-                        Badge(
-                            containerColor = AccentGold,
-                            contentColor = Color.White,
-                            modifier = Modifier.padding(0.dp)
+                        Surface(
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            shadowElevation = 2.dp
                         ) {
-                            Text("BEST", fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                            Text(
+                                "BEST", 
+                                style = MaterialTheme.typography.labelSmall, 
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
+                            )
                         }
                     }
                 }
 
-                // Discount badge (Subtler)
+                // Discount badge
                 if (book.discountPercent > 0) {
-                    Box(
+                    Surface(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(6.dp)
-                            .background(
-                                color = Color(0xFFEF4444).copy(alpha = 0.9f),
-                                shape = RoundedCornerShape(6.dp)
-                            )
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .padding(8.dp),
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                        shadowElevation = 2.dp
                     ) {
                         Text(
                             "-${book.discountPercent}%",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp)
                         )
                     }
                 }
@@ -430,7 +508,7 @@ fun ShopBookCard(
                     text = book.title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     lineHeight = 18.sp,
                     fontSize = 14.sp,
@@ -456,20 +534,19 @@ fun ShopBookCard(
                     Icon(
                         Icons.Default.Star,
                         contentDescription = null,
-                        tint = AccentGold,
-                        modifier = Modifier.size(12.dp) // Smaller star
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         String.format("%.1f", book.rating),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Price & Add to Cart
             Column(
@@ -479,49 +556,49 @@ fun ShopBookCard(
                     verticalAlignment = Alignment.Bottom
                 ) {
                     Text(
-                        text = "₹${book.discountedPrice.toInt()}",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = "Rs.${book.discountedPrice.toInt()}",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.primary
                     )
                     
                     if (book.discountPercent > 0) {
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "₹${book.price.toInt()}",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.7f),
+                            text = "Rs.${book.price.toInt()}",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textDecoration = TextDecoration.LineThrough,
-                            modifier = Modifier.padding(bottom = 2.dp)
+                            modifier = Modifier.padding(bottom = 3.dp)
                         )
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Full width Add to Cart Button
                  androidx.compose.material3.Button(
                     onClick = onAddToCart,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(36.dp),
-                    shape = RoundedCornerShape(8.dp),
+                        .height(48.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     ),
                     contentPadding = PaddingValues(0.dp)
                 ) {
                     Icon(
-                        Icons.Default.Add,
+                        Icons.Default.ShoppingCart,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(20.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Add",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
+                        text = "Add to Cart",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }

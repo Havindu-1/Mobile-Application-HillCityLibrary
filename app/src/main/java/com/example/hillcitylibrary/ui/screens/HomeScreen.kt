@@ -60,6 +60,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -73,17 +74,16 @@ import com.example.hillcitylibrary.ui.BookViewModel
 import com.example.hillcitylibrary.ui.components.BookCard
 import com.example.hillcitylibrary.ui.components.GreetingHeader
 import com.example.hillcitylibrary.ui.navigation.Screen
-import com.example.hillcitylibrary.ui.theme.AccentGold
-import com.example.hillcitylibrary.ui.theme.GradientEnd
-import com.example.hillcitylibrary.ui.theme.GradientStart
+ // placeholder, removed hardcoded colors
 
 @Composable
 fun HomeScreen(
     navController: NavController,
     viewModel: BookViewModel = viewModel()
 ) {
-    val books by viewModel.books.collectAsState()
+    val books by viewModel.filteredBooks.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val networkError by viewModel.networkError.collectAsState()
 
     // Logic for "Continue Reading"
     val currentBook = remember(books) {
@@ -134,7 +134,10 @@ fun HomeScreen(
                     .fillMaxWidth()
                     .background(
                         brush = Brush.verticalGradient(
-                            colors = listOf(GradientStart, GradientEnd)
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary, 
+                                MaterialTheme.colorScheme.tertiary
+                            )
                         )
                     )
             ) {
@@ -163,8 +166,7 @@ fun HomeScreen(
                         onValueChange = viewModel::onSearchQueryChange,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = Color.Black.copy(alpha = 0.2f))
-                            .background(Color.White, RoundedCornerShape(16.dp)),
+                            .background(Color.White, MaterialTheme.shapes.medium),
                         placeholder = { 
                             Text("Search books, authors...", color = Color.Gray) 
                         },
@@ -176,10 +178,40 @@ fun HomeScreen(
                             focusedContainerColor = Color.White,
                             unfocusedContainerColor = Color.White,
                             focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black
                         ),
-                        singleLine = true
+                        singleLine = true,
+                        trailingIcon = {
+                            IconButton(onClick = { navController.navigate("scanner") }) {
+                                Icon(
+                                    painter = painterResource(android.R.drawable.ic_menu_camera),
+                                    contentDescription = "Scan Book",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     )
+
+                    AnimatedVisibility(visible = networkError) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.errorContainer)
+                                .padding(12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No connection. Showing offline data.",
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -203,7 +235,7 @@ fun HomeScreen(
                         PaddingSectionHeader("Continue Reading")
                         ContinueReadingCard(
                             book = currentBook,
-                            onClick = { navController.navigate(Screen.BookDetails.createRoute(currentBook.id)) }
+                            onClick = { viewModel.selectBook(currentBook.id); navController.navigate(Screen.BookDetails.createRoute(currentBook.id)) }
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
@@ -221,7 +253,7 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = 20.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(BookGenre.values()) { genre ->
+                        items(BookGenre.entries.toTypedArray()) { genre ->
                             if (genre != BookGenre.ALL) {
                                 CategoryPill(
                                     genre = genre,
@@ -247,7 +279,7 @@ fun HomeScreen(
                         PaddingSectionHeader("Daily Pick")
                         FeaturedBookCard(
                             book = featuredBook,
-                            onClick = { navController.navigate(Screen.BookDetails.createRoute(featuredBook.id)) }
+                            onClick = { viewModel.selectBook(featuredBook.id); navController.navigate(Screen.BookDetails.createRoute(featuredBook.id)) }
                         )
                           Spacer(modifier = Modifier.height(32.dp))
                     }
@@ -271,7 +303,7 @@ fun HomeScreen(
                         items(books.sortedByDescending { it.rating }.take(5)) { book ->
                             BookCard(
                                 book = book,
-                                onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) }
+                                onBookClick = { bookId -> viewModel.selectBook(bookId); navController.navigate(Screen.BookDetails.createRoute(bookId)) }
                             )
                         }
                     }
@@ -295,7 +327,7 @@ fun HomeScreen(
                         items(books.takeLast(5).reversed()) { book ->
                             BookCard(
                                 book = book,
-                                onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) }
+                                onBookClick = { bookId -> viewModel.selectBook(bookId); navController.navigate(Screen.BookDetails.createRoute(bookId)) }
                             )
                         }
                     }
@@ -340,20 +372,31 @@ fun ContinueReadingCard(book: Book, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .height(140.dp)
-            .clickable { onClick() }
-            .shadow(4.dp, RoundedCornerShape(16.dp)),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            .clickable { onClick() },
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(modifier = Modifier.fillMaxSize()) {
-            Image(
-                painter = painterResource(id = book.coverImg),
-                contentDescription = book.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .width(100.dp)
-                    .fillMaxHeight()
-            )
+            if (book.coverUrl != null) {
+                AsyncImage(
+                    model = book.coverUrl,
+                    contentDescription = book.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .width(100.dp)
+                        .fillMaxHeight()
+                )
+            } else if (book.coverImg != null) {
+                Image(
+                    painter = painterResource(id = book.coverImg!!),
+                    contentDescription = book.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .width(100.dp)
+                        .fillMaxHeight()
+                )
+            }
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -414,16 +457,19 @@ fun ContinueReadingCard(book: Book, onClick: () -> Unit) {
 fun CategoryPill(genre: BookGenre, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(50),
+        shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+        modifier = Modifier.height(48.dp) // Minimum touch target
     ) {
-        Text(
-            text = genre.displayName,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = genre.displayName,
+                modifier = Modifier.padding(horizontal = 16.dp),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 
@@ -434,17 +480,26 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .height(200.dp) 
-            .clickable { onClick() }
-            .shadow(8.dp, RoundedCornerShape(20.dp)),
-         shape = RoundedCornerShape(20.dp),
+            .clickable { onClick() },
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Image(
-                painter = painterResource(id = book.coverImg),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+            if (book.coverUrl != null) {
+                AsyncImage(
+                    model = book.coverUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else if (book.coverImg != null) {
+                Image(
+                    painter = painterResource(id = book.coverImg!!),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -452,7 +507,7 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
                         Brush.horizontalGradient(
                             colors = listOf(Color.Black.copy(alpha = 0.8f), Color.Transparent),
                             startX = 0f,
-                            endX = 600f
+                            endX = Float.POSITIVE_INFINITY
                         )
                     )
             )
@@ -464,14 +519,13 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
                     .width(200.dp) // Limit text width
             ) {
                 Surface(
-                    color = AccentGold,
-                    shape = RoundedCornerShape(8.dp)
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = MaterialTheme.shapes.small
                 ) {
                     Text(
                         text = "FEATURED",
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
@@ -481,7 +535,7 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
@@ -492,13 +546,13 @@ fun FeaturedBookCard(book: Book, onClick: () -> Unit) {
                  Spacer(modifier = Modifier.height(16.dp))
                  Button(
                      onClick = onClick,
-                     colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
-                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                     modifier = Modifier.height(36.dp)
+                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface),
+                     contentPadding = PaddingValues(horizontal = 16.dp),
+                     modifier = Modifier.height(48.dp) // Fix touch target height
                  ) {
-                     Text("Read Now", fontSize = 12.sp)
-                     Spacer(modifier = Modifier.width(4.dp))
-                     Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                     Text("Read Now", style = MaterialTheme.typography.labelLarge)
+                     Spacer(modifier = Modifier.width(8.dp))
+                     Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
                  }
             }
         }

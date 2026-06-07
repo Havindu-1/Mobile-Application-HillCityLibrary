@@ -24,12 +24,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
@@ -59,6 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -72,8 +74,7 @@ import com.example.hillcitylibrary.ui.components.GreetingHeader
 import com.example.hillcitylibrary.ui.components.LibraryBookGridItem
 import com.example.hillcitylibrary.ui.components.LibraryBookItem
 import com.example.hillcitylibrary.ui.navigation.Screen
-import com.example.hillcitylibrary.ui.theme.GradientEnd
-import com.example.hillcitylibrary.ui.theme.GradientStart
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,6 +87,11 @@ fun LibraryScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isGridView by viewModel.isGridView.collectAsState()
     val sortOption by viewModel.sortOption.collectAsState()
+    val visibleBooksLimit by viewModel.visibleBooksLimit.collectAsState()
+    
+    val visibleBooks = remember(filteredBooks, visibleBooksLimit) {
+        filteredBooks.take(visibleBooksLimit)
+    }
     
     var showSortMenu by remember { mutableStateOf(false) }
 
@@ -104,7 +110,7 @@ fun LibraryScreen(
             Box(
                 modifier = Modifier.background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(GradientStart, GradientEnd)
+                        colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
                     )
                 )
             ) {
@@ -120,7 +126,7 @@ fun LibraryScreen(
                         navigationIcon = {
                             IconButton(onClick = { navController.popBackStack() }) {
                                 Icon(
-                                    imageVector = Icons.Default.ArrowBack,
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Back",
                                     tint = Color.White
                                 )
@@ -142,24 +148,27 @@ fun LibraryScreen(
                         onValueChange = viewModel::onSearchQueryChange,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .background(Color.White, RoundedCornerShape(12.dp)),
-                        placeholder = { Text("Search title, author...", color = Color.Gray) },
-                        leadingIcon = { Icon(Icons.Default.Search, "Search", tint = Color.Gray) },
+                            .padding(horizontal = 20.dp, vertical = 8.dp)
+                            .shadow(4.dp, RoundedCornerShape(24.dp))
+                            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(24.dp)),
+                        placeholder = { Text("Search title, author...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        leadingIcon = { Icon(Icons.Default.Search, "Search", tint = MaterialTheme.colorScheme.primary) },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                                    Icon(Icons.Default.Close, "Clear", tint = Color.Gray)
+                                    Icon(Icons.Default.Close, "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         },
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(24.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                             focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -181,7 +190,7 @@ fun LibraryScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -190,16 +199,19 @@ fun LibraryScreen(
                         modifier = Modifier.weight(1f),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(BookGenre.values()) { genre ->
+                        items(BookGenre.entries.toTypedArray()) { genre ->
                             val isSelected = genre == selectedGenre || (selectedGenre == null && genre == BookGenre.ALL)
                             FilterChip(
                                 selected = isSelected,
                                 onClick = { viewModel.onGenreSelected(if (genre == BookGenre.ALL) null else genre) },
-                                label = { Text(genre.displayName) },
+                                label = { Text(genre.displayName, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                border = if (isSelected) null else FilterChipDefaults.filterChipBorder(enabled = true, selected = false, borderColor = Color.Transparent)
                             )
                         }
                     }
@@ -215,7 +227,7 @@ fun LibraryScreen(
                             expanded = showSortMenu,
                             onDismissRequest = { showSortMenu = false }
                         ) {
-                            BookViewModel.SortOption.values().forEach { option ->
+                            BookViewModel.SortOption.entries.forEach { option ->
                                 DropdownMenuItem(
                                     text = { 
                                         Text(
@@ -256,9 +268,10 @@ fun LibraryScreen(
                     // Results Count
                     Text(
                         text = "${filteredBooks.size} books found",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                     )
 
                     if (filteredBooks.isEmpty()) {
@@ -281,31 +294,93 @@ fun LibraryScreen(
                     } else {
                         if (isGridView) {
                             LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
-                                contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                columns = GridCells.Adaptive(minSize = 160.dp),
+                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(20.dp)
                             ) {
-                                items(filteredBooks) { book ->
+                                items(visibleBooks) { book ->
                                     LibraryBookGridItem(
                                         book = book,
-                                        onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) }
+                                        onBookClick = { bookId -> viewModel.selectBook(bookId); navController.navigate(Screen.BookDetails.createRoute(bookId)) }
                                     )
                                 }
-                                item { Spacer(modifier = Modifier.height(80.dp)) }
+                                if (filteredBooks.size > visibleBooksLimit) {
+                                    item(span = { GridItemSpan(maxLineSpan) }) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 8.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth(0.7f)
+                                                    .height(48.dp)
+                                                    .clip(MaterialTheme.shapes.large)
+                                                    .background(
+                                                        brush = Brush.horizontalGradient(
+                                                            colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
+                                                        )
+                                                    )
+                                                    .clickable { viewModel.loadMoreBooks() },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = "More",
+                                                    color = Color.White,
+                                                    fontWeight = FontWeight.Bold,
+                                                    style = MaterialTheme.typography.titleMedium
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(80.dp)) }
                             }
                         } else {
                             LazyColumn(
-                                contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(20.dp)
                             ) {
-                                items(filteredBooks) { book ->
+                                items(visibleBooks) { book ->
                                     LibraryBookItem(
                                         book = book,
-                                        onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) },
+                                        onBookClick = { bookId -> viewModel.selectBook(bookId); navController.navigate(Screen.BookDetails.createRoute(bookId)) },
                                         onReserveClick = viewModel::reserveBook,
                                         onFavoriteClick = viewModel::toggleFavorite
                                     )
+                                }
+                                if (filteredBooks.size > visibleBooksLimit) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 8.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth(0.7f)
+                                                    .height(48.dp)
+                                                    .clip(MaterialTheme.shapes.large)
+                                                    .background(
+                                                        brush = Brush.horizontalGradient(
+                                                            colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
+                                                        )
+                                                    )
+                                                    .clickable { viewModel.loadMoreBooks() },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = "More",
+                                                    color = Color.White,
+                                                    fontWeight = FontWeight.Bold,
+                                                    style = MaterialTheme.typography.titleMedium
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                                 item { Spacer(modifier = Modifier.height(80.dp)) }
                             }

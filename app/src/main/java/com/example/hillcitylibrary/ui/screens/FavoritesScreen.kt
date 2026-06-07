@@ -26,8 +26,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -69,9 +70,7 @@ import com.example.hillcitylibrary.ui.BookViewModel
 import com.example.hillcitylibrary.ui.components.GreetingHeader
 import com.example.hillcitylibrary.ui.components.LibraryBookItem
 import com.example.hillcitylibrary.ui.navigation.Screen
-import com.example.hillcitylibrary.ui.theme.AccentGold
-import com.example.hillcitylibrary.ui.theme.GradientEnd
-import com.example.hillcitylibrary.ui.theme.GradientStart
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,7 +83,7 @@ fun FavoritesScreen(
     val collections by viewModel.collections.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Favorites", "My Shelves")
+    val tabs = listOf("Favorites", "My Shelves", "Reserved")
 
     // State for Dialogs
     var showCreateCollectionDialog by remember { mutableStateOf(false) }
@@ -118,8 +117,8 @@ fun FavoritesScreen(
                     modifier = Modifier.background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                GradientStart,
-                                GradientEnd
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary
                             )
                         )
                     )
@@ -152,7 +151,7 @@ fun FavoritesScreen(
                                     }
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.ArrowBack,
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = "Back",
                                         tint = Color.White
                                     )
@@ -168,7 +167,7 @@ fun FavoritesScreen(
                                 indicator = { tabPositions ->
                                     TabRowDefaults.SecondaryIndicator(
                                         Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                                        color = AccentGold
+                                        color = MaterialTheme.colorScheme.secondaryContainer
                                     )
                                 }
                             ) {
@@ -214,7 +213,7 @@ fun FavoritesScreen(
             ) {
                 if (selectedCollection != null) {
                     // Shelf Details View
-                    val collectionBooks = viewModel.books.collectAsState().value.filter { selectedCollection!!.bookIds.contains(it.id) }
+                    val collectionBooks = viewModel.localBooks.collectAsState().value.filter { selectedCollection!!.bookIds.contains(it.id) }
                     
                     if (collectionBooks.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -228,7 +227,7 @@ fun FavoritesScreen(
                             items(collectionBooks) { book ->
                                 LibraryBookItem(
                                     book = book,
-                                    onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) },
+                                    onBookClick = { bookId -> viewModel.selectBook(bookId); navController.navigate(Screen.BookDetails.createRoute(bookId)) },
                                     onReserveClick = viewModel::reserveBook,
                                     onFavoriteClick = viewModel::toggleFavorite,
                                     onAddToCollectionClick = { /* Already in collection, maybe remove? */ }
@@ -241,12 +240,21 @@ fun FavoritesScreen(
                         0 -> { // Favorites Tab
                             if (favoriteBooks.isEmpty()) {
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = "No favorites yet.\nGo to the library to add some!",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        textAlign = TextAlign.Center,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            Icons.Filled.FavoriteBorder, 
+                                            contentDescription = null, 
+                                            modifier = Modifier.size(64.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "No favorites yet.\nGo to the library to add some!",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            textAlign = TextAlign.Center,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             } else {
                                 LazyColumn(
@@ -256,7 +264,7 @@ fun FavoritesScreen(
                                     items(favoriteBooks) { book ->
                                         LibraryBookItem(
                                             book = book,
-                                            onBookClick = { bookId -> navController.navigate(Screen.BookDetails.createRoute(bookId)) },
+                                            onBookClick = { bookId -> viewModel.selectBook(bookId); navController.navigate(Screen.BookDetails.createRoute(bookId)) },
                                             onReserveClick = viewModel::reserveBook,
                                             onFavoriteClick = viewModel::toggleFavorite,
                                             onAddToCollectionClick = { bookId -> bookIdAddToCollection = bookId }
@@ -268,12 +276,21 @@ fun FavoritesScreen(
                         1 -> { // Shelves Tab
                             if (collections.isEmpty()) {
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = "No shelves yet.\nCreate one to organize your books!",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        textAlign = TextAlign.Center,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            Icons.Default.Menu, 
+                                            contentDescription = null, 
+                                            modifier = Modifier.size(64.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "No shelves yet.\nCreate one to organize your books!",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            textAlign = TextAlign.Center,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             } else {
                                 LazyVerticalGrid(
@@ -288,7 +305,9 @@ fun FavoritesScreen(
                                             modifier = Modifier
                                                 .height(180.dp)
                                                 .clickable { selectedCollection = collection },
-                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                            colors = CardDefaults.elevatedCardColors(),
+                                            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+                                            shape = MaterialTheme.shapes.large
                                         ) {
                                             Column(
                                                 modifier = Modifier
@@ -320,6 +339,43 @@ fun FavoritesScreen(
                                 }
                             }
                         }
+                        2 -> { // Reserved Tab
+                            val reservedBooks = viewModel.localBooks.collectAsState().value.filter { it.isReserved }
+                            if (reservedBooks.isEmpty()) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            Icons.Filled.FavoriteBorder, 
+                                            contentDescription = null, 
+                                            modifier = Modifier.size(64.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "No reserved books yet.\nReserve some to start reading!",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            textAlign = TextAlign.Center,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            } else {
+                                LazyColumn(
+                                    contentPadding = PaddingValues(bottom = 80.dp, top = 16.dp, start = 16.dp, end = 16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(reservedBooks) { book ->
+                                        LibraryBookItem(
+                                            book = book,
+                                            onBookClick = { bookId -> viewModel.selectBook(bookId); navController.navigate(Screen.BookDetails.createRoute(bookId)) },
+                                            onReserveClick = viewModel::reserveBook,
+                                            onFavoriteClick = viewModel::toggleFavorite,
+                                            onAddToCollectionClick = { bookId -> bookIdAddToCollection = bookId }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -331,17 +387,24 @@ fun FavoritesScreen(
         var newCollectionName by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showCreateCollectionDialog = false },
-            title = { Text("Create New Shelf") },
+            title = { Text("Create New Shelf", fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = newCollectionName,
                     onValueChange = { newCollectionName = it },
                     label = { Text("Shelf Name") },
-                    singleLine = true
+                    singleLine = true,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                    )
                 )
             },
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surface,
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         if (newCollectionName.isNotBlank()) {
                             viewModel.createCollection(newCollectionName)
@@ -363,31 +426,39 @@ fun FavoritesScreen(
     if (bookIdAddToCollection != null) {
         AlertDialog(
             onDismissRequest = { bookIdAddToCollection = null },
-            title = { Text("Add to Shelf") },
+            title = { Text("Add to Shelf", fontWeight = FontWeight.Bold) },
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.surface,
             text = {
                 if (collections.isEmpty()) {
                     Text("No shelves available. Create one first!")
                 } else {
-                    LazyColumn {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(collections.size) { index ->
                             val collection = collections[index]
-                            ListItem(
-                                headlineContent = { Text(collection.name) },
-                                trailingContent = {
-                                    if (collection.bookIds.contains(bookIdAddToCollection)) {
-                                        Icon(Icons.Filled.Check, contentDescription = "Added", tint = Color.Green)
-                                    } else {
-                                        Button(
-                                            onClick = {
-                                                viewModel.addBookToCollection(collection.id, bookIdAddToCollection!!)
-                                                bookIdAddToCollection = null
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                ListItem(
+                                    headlineContent = { Text(collection.name, fontWeight = FontWeight.SemiBold) },
+                                    colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
+                                    trailingContent = {
+                                        if (collection.bookIds.contains(bookIdAddToCollection)) {
+                                            Icon(Icons.Filled.Check, contentDescription = "Added", tint = Color.Green)
+                                        } else {
+                                            Button(
+                                                onClick = {
+                                                    viewModel.addBookToCollection(collection.id, bookIdAddToCollection!!)
+                                                    bookIdAddToCollection = null
+                                                }
+                                            ) {
+                                                Text("Add")
                                             }
-                                        ) {
-                                            Text("Add")
                                         }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }

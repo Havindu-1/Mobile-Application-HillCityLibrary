@@ -33,12 +33,12 @@ class AmbientLightSensorManager(context: Context) : SensorEventListener {
         if (event?.sensor?.type == Sensor.TYPE_LIGHT) {
             val lux = event.values[0]
             _ambientLux.value = lux
-            
-            // Typical threshold: < 10 lux is very dark (nighttime/dark room)
-            // between 10-50 is dim
-            if (lux < 1.0f && !_isDarkEnvironment.value) {
+
+            // < 50 lux = dim room / night reading condition
+            // >= 50 lux = well-lit / normal conditions
+            if (lux < 50f && !_isDarkEnvironment.value) {
                 _isDarkEnvironment.value = true
-            } else if (lux >= 1.0f && _isDarkEnvironment.value) {
+            } else if (lux >= 50f && _isDarkEnvironment.value) {
                 _isDarkEnvironment.value = false
             }
         }

@@ -7,7 +7,8 @@ data class Book(
     val title: String,
     val author: String,
     val description: String,
-    val coverImg: Int, // In a real app this might be a URL, here likely a wrapper or resource ID logic
+    val coverImg: Int? = null,
+    val coverUrl: String? = null,
     val genre: BookGenre,
     val pageCount: Int,
     val rating: Double = 0.0,
@@ -22,6 +23,12 @@ enum class BookGenre(val displayName: String) {
     EDUCATION("Education"),
     TECHNOLOGY("Technology"),
     NOVEL("Novels"),
+    MYSTERY("Mystery & Thriller"),
+    SCI_FI("Science Fiction"),
+    FANTASY("Fantasy"),
+    BIOGRAPHY("Biography"),
+    HISTORY("History"),
+    ROMANCE("Romance"),
     ALL("All")
 }
 

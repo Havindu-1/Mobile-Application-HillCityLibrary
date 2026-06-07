@@ -62,11 +62,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.hillcitylibrary.model.CartItem
 import com.example.hillcitylibrary.ui.ShopViewModel
-import com.example.hillcitylibrary.ui.theme.AccentGold
-import com.example.hillcitylibrary.ui.theme.GradientEnd
-import com.example.hillcitylibrary.ui.theme.GradientStart
-import com.example.hillcitylibrary.ui.theme.SuccessGreen
 import kotlinx.coroutines.launch
+import coil.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,8 +88,8 @@ fun CartScreen(
                         Text("Shopping Cart", fontWeight = FontWeight.Bold)
                         if (cartItems.isNotEmpty()) {
                             Badge(
-                                containerColor = AccentGold,
-                                contentColor = Color.White
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                             ) {
                                 Text("${cartItems.sumOf { it.quantity }}", fontWeight = FontWeight.Bold)
                             }
@@ -111,7 +108,7 @@ fun CartScreen(
                 ),
                 modifier = Modifier.background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(GradientStart, GradientEnd)
+                        colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
                     )
                 )
             )
@@ -167,7 +164,7 @@ fun CartScreen(
                             .fillMaxWidth(0.7f)
                             .height(56.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = GradientStart
+                            containerColor = MaterialTheme.colorScheme.primary
                         ),
                         shape = RoundedCornerShape(16.dp)
                     ) {
@@ -212,11 +209,11 @@ fun CartScreen(
                             .fillMaxWidth()
                             .padding(16.dp)
                             .shadow(
-                                elevation = 8.dp,
-                                shape = RoundedCornerShape(20.dp),
-                                spotColor = GradientStart.copy(alpha = 0.3f)
+                                elevation = 4.dp,
+                                shape = MaterialTheme.shapes.large,
+                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                             ),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = MaterialTheme.shapes.large,
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.surface
                         ),
@@ -244,16 +241,16 @@ fun CartScreen(
                             val tax = subtotal * 0.05 // 5% GST
                             val total = subtotal + tax
 
-                            SummaryRow("Items ($itemCount books)", "₹${subtotal.toInt()}")
+                            SummaryRow("Items ($itemCount books)", "Rs.${subtotal.toInt()}")
                             if (discount > 0) {
                                 SummaryRow(
                                     "Discount",
-                                    "₹${discount.toInt()}",
-                                    color = SuccessGreen,
+                                    "Rs.${discount.toInt()}",
+                                    color = MaterialTheme.colorScheme.primary,
                                     highlighted = true
                                 )
                             }
-                            SummaryRow("GST (5%)", "₹${tax.toInt()}")
+                            SummaryRow("GST (5%)", "Rs.${tax.toInt()}")
                             
                             Spacer(modifier = Modifier.height(16.dp))
                             Box(
@@ -286,16 +283,16 @@ fun CartScreen(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        "₹${total.toInt()}",
+                                        "Rs.${total.toInt()}",
                                         fontSize = 28.sp,
                                         fontWeight = FontWeight.ExtraBold,
-                                        color = GradientStart
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
                                 if (discount > 0) {
                                     Card(
                                         colors = CardDefaults.cardColors(
-                                            containerColor = SuccessGreen.copy(alpha = 0.15f)
+                                            containerColor = MaterialTheme.colorScheme.primaryContainer
                                         ),
                                         shape = RoundedCornerShape(12.dp)
                                     ) {
@@ -307,14 +304,14 @@ fun CartScreen(
                                             Icon(
                                                 Icons.Default.LocalOffer,
                                                 contentDescription = null,
-                                                tint = SuccessGreen,
+                                                tint = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.size(16.dp)
                                             )
                                             Text(
-                                                "₹${discount.toInt()} saved",
+                                                "Rs.${discount.toInt()} saved",
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = SuccessGreen
+                                                color = MaterialTheme.colorScheme.primary
                                             )
                                         }
                                     }
@@ -348,7 +345,7 @@ fun CartScreen(
                                         .fillMaxSize()
                                         .background(
                                             brush = Brush.horizontalGradient(
-                                                colors = listOf(GradientStart, GradientEnd)
+                                                colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
                                             )
                                         ),
                                     contentAlignment = Alignment.Center
@@ -377,17 +374,12 @@ fun CartItemCard(
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 4.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-            ),
-        shape = RoundedCornerShape(16.dp),
+            .fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -409,18 +401,27 @@ fun CartItemCard(
                         )
                     )
             ) {
-                Image(
-                    painter = painterResource(id = cartItem.book.coverImg),
-                    contentDescription = cartItem.book.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                if (cartItem.book.coverUrl != null) {
+                    AsyncImage(
+                        model = cartItem.book.coverUrl,
+                        contentDescription = cartItem.book.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else if (cartItem.book.coverImg != null) {
+                    Image(
+                        painter = painterResource(id = cartItem.book.coverImg),
+                        contentDescription = cartItem.book.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
                 
                 // Discount badge overlay
                 if (cartItem.book.discountPercent > 0) {
                     Badge(
-                        containerColor = Color(0xFFEF4444),
-                        contentColor = Color.White,
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(6.dp)
@@ -446,7 +447,7 @@ fun CartItemCard(
                         cartItem.book.title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         fontSize = 15.sp,
                         lineHeight = 20.sp
@@ -472,7 +473,7 @@ fun CartItemCard(
                     Column {
                         if (cartItem.book.discountPercent > 0) {
                             Text(
-                                text = "₹${cartItem.book.price.toInt()}",
+                                text = "Rs.${cartItem.book.price.toInt()}",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textDecoration = TextDecoration.LineThrough
@@ -484,10 +485,10 @@ fun CartItemCard(
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                "₹${cartItem.book.discountedPrice.toInt()}",
+                                "Rs.${cartItem.book.discountedPrice.toInt()}",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = GradientStart
+                                color = MaterialTheme.colorScheme.primary
                             )
                             Text(
                                 "×${cartItem.quantity}",
@@ -498,7 +499,7 @@ fun CartItemCard(
                         }
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            "Total: ₹${cartItem.totalPrice.toInt()}",
+                            "Total: Rs.${cartItem.totalPrice.toInt()}",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -513,7 +514,7 @@ fun CartItemCard(
                         IconButton(
                             onClick = { onQuantityChange(cartItem.quantity - 1) },
                             modifier = Modifier
-                                .size(36.dp)
+                                .size(48.dp) // Accessibility min touch target
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                         ) {
@@ -535,7 +536,7 @@ fun CartItemCard(
                         IconButton(
                             onClick = { onQuantityChange(cartItem.quantity + 1) },
                             modifier = Modifier
-                                .size(36.dp)
+                                .size(48.dp) // Accessibility min touch target
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
                         ) {
@@ -554,14 +555,14 @@ fun CartItemCard(
             IconButton(
                 onClick = onRemove,
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(48.dp) // Accessibility min touch target
                     .clip(CircleShape)
-                    .background(Color(0xFFEF4444).copy(alpha = 0.1f))
+                    .background(MaterialTheme.colorScheme.errorContainer)
             ) {
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Remove",
-                    tint = Color(0xFFEF4444),
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
                     modifier = Modifier.size(20.dp)
                 )
             }

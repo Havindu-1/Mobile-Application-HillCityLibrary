@@ -10,6 +10,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,6 +30,8 @@ import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,24 +56,43 @@ import com.example.hillcitylibrary.ui.screens.*
 import com.example.hillcitylibrary.ui.theme.AccentGold
 import com.example.hillcitylibrary.ui.theme.GradientEnd
 import com.example.hillcitylibrary.ui.theme.GradientStart
+import com.example.hillcitylibrary.ui.AuthState
+import com.example.hillcitylibrary.ui.AuthViewModel
 
 @Composable
 fun HillCityLibraryApp(
     viewModel: BookViewModel = viewModel(),
-    shopViewModel: ShopViewModel = viewModel()
+    shopViewModel: ShopViewModel = viewModel(),
+    authViewModel: AuthViewModel = viewModel()
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // Auth guard — observe Firebase session and redirect accordingly
+    val authState by authViewModel.authState.collectAsState()
+
+    // React to auth state changes — redirect to Home when authenticated
+    LaunchedEffect(authState) {
+        when (authState) {
+            AuthState.Authenticated -> {
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.Login.route) { inclusive = true }
+                }
+            }
+            else -> Unit
+        }
+    }
 
     val configuration = LocalConfiguration.current
     val isWideScreen = configuration.screenWidthDp > 600
 
     Row(modifier = Modifier.fillMaxSize()) {
         // Navigation Rail for Wide Screens
-        if (isWideScreen && 
-            currentRoute != Screen.Login.route && 
-            currentRoute != Screen.SignUp.route) {
+        if (isWideScreen &&
+            currentRoute != Screen.Login.route &&
+            currentRoute != Screen.SignUp.route &&
+            currentRoute != Screen.ForgotPassword.route) {
             
             NavigationRail(
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -125,91 +147,60 @@ fun HillCityLibraryApp(
             bottomBar = {
                 // Show bottom bar only on main screens AND NOT wide screen
                 if (!isWideScreen &&
-                    currentRoute != Screen.Login.route && 
-                    currentRoute != Screen.SignUp.route &&
-                    currentRoute != Screen.Cart.route) {
+            currentRoute != Screen.Login.route &&
+            currentRoute != Screen.SignUp.route &&
+            currentRoute != Screen.ForgotPassword.route &&
+            currentRoute != Screen.Cart.route) {
                     
-                    // Enhanced Navigation Bar with gradient background
-                    Box(
+                    // Enhanced Navigation Bar with Material 3 styling
+                    NavigationBar(
                         modifier = Modifier
-                            .shadow(
-                                elevation = 16.dp,
-                                spotColor = GradientStart.copy(alpha = 0.3f)
-                            )
-                            .background(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(
-                                        GradientStart.copy(alpha = 0.98f),
-                                        GradientEnd.copy(alpha = 0.98f)
-                                    )
-                                )
-                            )
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                            .shadow(16.dp),
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        tonalElevation = 8.dp
                     ) {
-                        NavigationBar(
-                            modifier = Modifier.height(80.dp),
-                            containerColor = Color.Transparent,
-                            tonalElevation = 0.dp
-                        ) {
-                            val currentDestination = navBackStackEntry?.destination
-                            bottomNavItems.forEach { screen ->
-                                val isSelected = currentDestination?.hierarchy?.any { 
-                                    it.route == screen.route 
-                                } == true
-                                
-                                // Animated scale for selected items
-                                val scale by animateFloatAsState(
-                                    targetValue = if (isSelected) 1.2f else 1f,
-                                    animationSpec = tween(durationMillis = 200),
-                                    label = "nav_scale"
-                                )
-                                
-                                // Animated color for icons
-                                val iconColor by animateColorAsState(
-                                    targetValue = if (isSelected) AccentGold else Color.White.copy(alpha = 0.6f),
-                                    animationSpec = tween(durationMillis = 200),
-                                    label = "icon_color"
-                                )
-                                
-                                NavigationBarItem(
-                                    icon = { 
-                                        Icon(
-                                            screen.icon!!,
-                                            contentDescription = screen.title,
-                                            modifier = Modifier
-                                                .scale(scale)
-                                                .size(24.dp), // Consistent size
-                                            tint = iconColor
-                                        )
-                                    },
-                                    label = { 
-                                        if(isSelected) {
-                                            Text(
-                                                screen.title,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = AccentGold
-                                            )
-                                        }
-                                    },
-                                    selected = isSelected,
-                                    onClick = {
-                                        navController.navigate(screen.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
-                                            }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    },
-                                    colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = AccentGold,
-                                        unselectedIconColor = Color.White.copy(alpha = 0.6f),
-                                        selectedTextColor = AccentGold, // Match icon
-                                        unselectedTextColor = Color.Transparent, // Hide unselected label for cleaner look
-                                        indicatorColor = Color.White.copy(alpha = 0.1f) // Subtle indicator
+                        val currentDestination = navBackStackEntry?.destination
+                        bottomNavItems.forEach { screen ->
+                            val isSelected = currentDestination?.hierarchy?.any { 
+                                it.route == screen.route 
+                            } == true
+                            
+                            NavigationBarItem(
+                                icon = { 
+                                    Icon(
+                                        screen.icon!!,
+                                        contentDescription = screen.title,
+                                        modifier = Modifier.size(26.dp)
                                     )
+                                },
+                                label = { 
+                                    Text(
+                                        text = screen.title,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                },
+                                selected = isSelected,
+                                alwaysShowLabel = false, // Hides label when unselected, animates beautifully
+                                onClick = {
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                            }
+                            )
                         }
                     }
                 }
@@ -220,9 +211,6 @@ fun HillCityLibraryApp(
                 startDestination = Screen.Login.route,
                 modifier = Modifier
                     .padding(innerPadding)
-                    // If wide screen, we might need to adjust padding or let scaffold handle it? 
-                    // Actually, innerPadding from Scaffold handles bottom bar.
-                    // For side rail, it's outside scaffold.
                     .fillMaxSize(),
                 enterTransition = {
                     slideInHorizontally(initialOffsetX = { 1000 }, animationSpec = tween(500)) + fadeIn(animationSpec = tween(500))
@@ -237,20 +225,27 @@ fun HillCityLibraryApp(
                     slideOutHorizontally(targetOffsetX = { 1000 }, animationSpec = tween(500)) + fadeOut(animationSpec = tween(500))
                 }
             ) {
-                // AUTH Screens - Fade Transitions
                 composable(
                     route = Screen.Login.route,
                     enterTransition = { fadeIn(tween(500)) },
                     exitTransition = { fadeOut(tween(500)) }
-                ) { LoginScreen(navController, viewModel) }
-                
+                ) { LoginScreen(navController, authViewModel) }
+
                 composable(
                     route = Screen.SignUp.route,
                     enterTransition = { slideInHorizontally(initialOffsetX = { 1000 }) + fadeIn() },
                     exitTransition = { slideOutHorizontally(targetOffsetX = { -1000 }) + fadeOut() },
                     popEnterTransition = { slideInHorizontally(initialOffsetX = { -1000 }) + fadeIn() },
                     popExitTransition = { slideOutHorizontally(targetOffsetX = { 1000 }) + fadeOut() }
-                ) { SignUpScreen(navController, viewModel) }
+                ) { RegisterScreen(navController, authViewModel) }
+
+                composable(
+                    route = Screen.ForgotPassword.route,
+                    enterTransition = { slideInHorizontally(initialOffsetX = { 1000 }) + fadeIn() },
+                    exitTransition = { slideOutHorizontally(targetOffsetX = { -1000 }) + fadeOut() },
+                    popEnterTransition = { slideInHorizontally(initialOffsetX = { -1000 }) + fadeIn() },
+                    popExitTransition = { slideOutHorizontally(targetOffsetX = { 1000 }) + fadeOut() }
+                ) { ForgotPasswordScreen(navController, authViewModel) }
 
                 // MAIN TABS - Cross-fade (No sliding between top-level destinations)
                 val mainTabs = listOf(
@@ -292,7 +287,7 @@ fun HillCityLibraryApp(
                     route = Screen.Profile.route,
                     enterTransition = { fadeIn(tween(500)) },
                     exitTransition = { fadeOut(tween(500)) }
-                ) { ProfileScreen(navController, viewModel) }
+                ) { ProfileScreen(navController, viewModel, authViewModel) }
 
                 // DETAIL SCREENS - Slide Transitions (Default set in NavHost, but explicit here for clarity if needed)
                 composable(Screen.Cart.route) { CartScreen(navController, shopViewModel) }
@@ -307,6 +302,15 @@ fun HillCityLibraryApp(
                 composable(Screen.Reading.route) { backStackEntry ->
                     val bookId = backStackEntry.arguments?.getString("bookId")
                     ReadingScreen(navController, bookId)
+                }
+
+                composable(Screen.Scanner.route) {
+                    ScannerScreen(onIsbnScanned = { isbn ->
+                        viewModel.onSearchQueryChange(isbn)
+                        navController.navigate(Screen.Library.route) {
+                            popUpTo(Screen.Home.route)
+                        }
+                    })
                 }
             }
         }

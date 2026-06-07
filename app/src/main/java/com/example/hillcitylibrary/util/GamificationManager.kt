@@ -60,6 +60,11 @@ class GamificationManager(private val context: Context) {
         _newlyUnlockedAchievement.value = null
     }
 
+    fun addReadingProgress(pagesRead: Int, timeSpentMinutes: Long) {
+        val earnedXp = (pagesRead * 5) + (timeSpentMinutes * 2).toInt()
+        addXp(earnedXp)
+    }
+
     fun addXp(amount: Int) {
         val current = _userProfile.value
         var newXp = current.xp + amount
