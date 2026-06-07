@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">Hillcitylibrary</string>
+    <string name="app_name">Hill City Library</string>
+    <!-- Replace with real Web Client ID from Firebase Console after setting up your project -->
+    <string name="default_web_client_id">000000000000-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com</string>
 </resources>

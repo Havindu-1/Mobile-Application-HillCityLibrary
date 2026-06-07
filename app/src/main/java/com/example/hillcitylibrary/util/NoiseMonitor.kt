@@ -13,12 +13,22 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlin.math.log10
 
 object NoiseMonitor {
     private const val CHANNEL_ID = "NOISE_MONITOR_CHANNEL"
+
+    // Expose live decibel reading so UI can observe it
+    private val _currentDecibels = MutableStateFlow(0.0)
+    val currentDecibels: StateFlow<Double> = _currentDecibels.asStateFlow()
+
+    private val _isNoisyEnvironment = MutableStateFlow(false)
+    val isNoisyEnvironment: StateFlow<Boolean> = _isNoisyEnvironment.asStateFlow()
 
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -54,7 +64,7 @@ object NoiseMonitor {
         context: Context,
         onNoiseExceeded: () -> Unit
     ) = withContext(Dispatchers.IO) {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) 
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED) {
             Log.e("NoiseMonitor", "RECORD_AUDIO permission not granted")
             return@withContext
@@ -72,8 +82,11 @@ object NoiseMonitor {
             mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
             mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
             mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
-            mediaRecorder.setOutputFile("/dev/null")
-            
+
+            // Use app-specific cache dir instead of /dev/null for broader compatibility
+            val outputFile = java.io.File(context.cacheDir, "noise_discard.3gp")
+            mediaRecorder.setOutputFile(outputFile.absolutePath)
+
             mediaRecorder.prepare()
             mediaRecorder.start()
 
@@ -84,12 +97,16 @@ object NoiseMonitor {
 
             while (isActive) {
                 val maxAmplitude = mediaRecorder.maxAmplitude
-                
+
                 val db = if (maxAmplitude > 0) {
                     20 * log10(maxAmplitude.toDouble())
                 } else {
                     0.0
                 }
+
+                // Publish live dB value for UI
+                _currentDecibels.value = db
+                _isNoisyEnvironment.value = db > thresholdDb
 
                 if (db > thresholdDb) {
                     elevatedNoiseDuration += checkIntervalMs
@@ -97,7 +114,7 @@ object NoiseMonitor {
                         withContext(Dispatchers.Main) {
                             onNoiseExceeded()
                         }
-                        elevatedNoiseDuration = 0L 
+                        elevatedNoiseDuration = 0L
                     }
                 } else {
                     elevatedNoiseDuration = 0L
@@ -114,6 +131,8 @@ object NoiseMonitor {
                 Log.e("NoiseMonitor", "Error stopping recorder", e)
             }
             mediaRecorder?.release()
+            _currentDecibels.value = 0.0
+            _isNoisyEnvironment.value = false
         }
     }
 }

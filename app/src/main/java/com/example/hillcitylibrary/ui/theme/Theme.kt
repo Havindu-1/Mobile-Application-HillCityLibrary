@@ -94,9 +94,9 @@ private val darkScheme = darkColorScheme(
 
 @Composable
 fun HillcitylibraryTheme(
-    darkTheme: Boolean = false, // Enforce light theme by default
+    darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -111,13 +111,17 @@ fun HillcitylibraryTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+            window.statusBarColor = androidx.compose.ui.graphics.Color.Transparent.toArgb()
+            window.navigationBarColor = androidx.compose.ui.graphics.Color.Transparent.toArgb()
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
         }
     }
 
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = Typography,
+        shapes = Shapes,
         content = content
     )
 }
